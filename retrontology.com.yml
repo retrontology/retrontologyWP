@@ -456,7 +456,14 @@ Resources:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
     Properties:
       Subnets:
-        Fn::ImportValue: !Join [ "-", [ !Ref EnvironmentName, subnets-public ] ]
+        - 'Fn::ImportValue': !Join 
+            - '-'
+            - - !Ref EnvironmentName
+              - subnet-public-1
+        - 'Fn::ImportValue': !Join 
+            - '-'
+            - - !Ref EnvironmentName
+              - subnet-public-2
     Metadata:
       'AWS::CloudFormation::Designer':
         id: 43c68a68-362e-4bb2-809c-ddb42e7c48dc
@@ -483,7 +490,10 @@ Resources:
       Protocol: HTTP
       UnhealthyThresholdCount: 5
       VpcId:
-        Fn::ImportValue: !Join [ "-", [ !Ref EnvironmentName, vpc ] ]
+        'Fn::ImportValue': !Join 
+          - '-'
+          - - !Ref EnvironmentName
+            - vpc
       TargetGroupAttributes:
         - Key: stickiness.enabled
           Value: 'true'
@@ -514,7 +524,10 @@ Resources:
           ToPort: '22'
           CidrIp: !Ref SSHLocation
       VpcId:
-        Fn::ImportValue: !Join [ "-", [ !Ref EnvironmentName, vpc ] ]
+        'Fn::ImportValue': !Join 
+          - '-'
+          - - !Ref EnvironmentName
+            - vpc
     Metadata:
       'AWS::CloudFormation::Designer':
         id: 362849ae-7204-48e6-991d-cbaf04806159
@@ -522,7 +535,14 @@ Resources:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     Properties:
       VPCZoneIdentifier:
-        Fn::ImportValue: !Join [ "-", [ !Ref EnvironmentName, subnets-public ] ]
+        - 'Fn::ImportValue': !Join 
+            - '-'
+            - - !Ref EnvironmentName
+              - subnet-private-1
+        - 'Fn::ImportValue': !Join 
+            - '-'
+            - - !Ref EnvironmentName
+              - subnet-private-2
       LaunchConfigurationName: !Ref LaunchConfig
       MinSize: '1'
       MaxSize: '5'
@@ -692,10 +712,27 @@ Resources:
           ToPort: '3306'
           SourceSecurityGroupId: !Ref WebServerSecurityGroup
       VpcId:
-        Fn::ImportValue: !Join [ "-", [ !Ref EnvironmentName, vpc ] ]
+        'Fn::ImportValue': !Join 
+          - '-'
+          - - !Ref EnvironmentName
+            - vpc
     Metadata:
       'AWS::CloudFormation::Designer':
         id: de5c7159-4971-4bf5-85f9-f9f4ab9bf54c
+  DBSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: Subnet for database
+      DBSubnetGroupName: DBSubnetGroup
+      SubnetIds:
+        - 'Fn::ImportValue': !Join 
+            - '-'
+            - - !Ref EnvironmentName
+              - subnet-private-1
+        - 'Fn::ImportValue': !Join 
+            - '-'
+            - - !Ref EnvironmentName
+              - subnet-private-2
   DBInstance:
     Type: 'AWS::RDS::DBInstance'
     Properties:
@@ -706,26 +743,16 @@ Resources:
       MasterUserPassword: !Ref DBPassword
       DBInstanceClass: !Ref DBClass
       AllocatedStorage: !Ref DBAllocatedStorage
-      VPCSecurityGroups:
+      VPCSecurityGroups: !Ref DBSubnetGroup
         - !GetAtt 
           - DBEC2SecurityGroup
           - GroupId
     Metadata:
       'AWS::CloudFormation::Designer':
         id: b422a5d3-a933-4758-9e9a-4ed7f70acbb3
-  ElasticFileSystem:
-    Type: 'AWS::EFS::FileSystem'
-    Properties: {}
     Metadata:
       'AWS::CloudFormation::Designer':
-        id: 4e17e978-47c0-476f-a13b-2fba180fb8ef
-  EFSMountTarget:
-    Type: 'AWS::EFS::MountTarget'
-    Properties:
-      FileSystemID: !Ref ElasticFileSystem
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: f1d348e0-0823-4bb0-b181-cb60f106fdb6
+        id: de78acbe-b0b8-44df-bda2-8aafa58ccce9
 Outputs:
   WebsiteURL:
     Value: !Join 
@@ -779,9 +806,10 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 270
+        x: 280
         'y': 180
       z: 1
+      parent: de78acbe-b0b8-44df-bda2-8aafa58ccce9
       embeds: []
     2db1c3d7-c460-4fca-b705-2d9cc49e6544:
       size:
@@ -813,21 +841,13 @@ Metadata:
         'y': 270
       z: 1
       embeds: []
-    4e17e978-47c0-476f-a13b-2fba180fb8ef:
+    de78acbe-b0b8-44df-bda2-8aafa58ccce9:
       size:
-        width: 60
-        height: 60
+        width: 100
+        height: 90
       position:
-        x: 270
-        'y': 360
+        x: 260
+        'y': 160
       z: 0
-      embeds: []
-    f1d348e0-0823-4bb0-b181-cb60f106fdb6:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 170
-        'y': 360
-      z: 0
-      embeds: []
+      embeds:
+        - b422a5d3-a933-4758-9e9a-4ed7f70acbb3
