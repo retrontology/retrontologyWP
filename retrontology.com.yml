@@ -538,11 +538,11 @@ Resources:
         - 'Fn::ImportValue': !Join 
             - '-'
             - - !Ref EnvironmentName
-              - subnet-private-1
+              - subnet-public-1
         - 'Fn::ImportValue': !Join 
             - '-'
             - - !Ref EnvironmentName
-              - subnet-private-2
+              - subnet-public-2
       LaunchConfigurationName: !Ref LaunchConfig
       MinSize: '1'
       MaxSize: '5'
@@ -718,7 +718,7 @@ Resources:
             - vpc
     Metadata:
       'AWS::CloudFormation::Designer':
-        id: de5c7159-4971-4bf5-85f9-f9f4ab9bf54c
+        id: 9d93aad7-4e7a-4bed-bf97-d1fdf6b10d9d
   DBSubnetGroup:
     Type: 'AWS::RDS::DBSubnetGroup'
     Properties:
@@ -733,6 +733,9 @@ Resources:
             - '-'
             - - !Ref EnvironmentName
               - subnet-private-2
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 7c44c759-f180-41d9-900e-6ff3b8689749
   DBInstance:
     Type: 'AWS::RDS::DBInstance'
     Properties:
@@ -743,13 +746,11 @@ Resources:
       MasterUserPassword: !Ref DBPassword
       DBInstanceClass: !Ref DBClass
       AllocatedStorage: !Ref DBAllocatedStorage
-      VPCSecurityGroups: !Ref DBSubnetGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
         - !GetAtt 
           - DBEC2SecurityGroup
           - GroupId
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: b422a5d3-a933-4758-9e9a-4ed7f70acbb3
     Metadata:
       'AWS::CloudFormation::Designer':
         id: de78acbe-b0b8-44df-bda2-8aafa58ccce9
@@ -765,13 +766,22 @@ Outputs:
     Description: WordPress Website
 Metadata:
   'AWS::CloudFormation::Designer':
+    7c44c759-f180-41d9-900e-6ff3b8689749:
+      size:
+        width: 100
+        height: 80
+      position:
+        x: 270
+        'y': 280
+      z: 1
+      embeds: []
     f0ac89f8-9931-4cd3-9337-19983150aea6:
       size:
         width: 60
         height: 60
       position:
-        x: -30
-        'y': 270
+        x: 90
+        'y': 170
       z: 1
       embeds: []
     43c68a68-362e-4bb2-809c-ddb42e7c48dc:
@@ -779,8 +789,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: -30
-        'y': 180
+        x: -110
+        'y': 170
       z: 1
       embeds: []
     362849ae-7204-48e6-991d-cbaf04806159:
@@ -788,36 +798,35 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 70
-        'y': 180
+        x: 190
+        'y': -30
       z: 1
       embeds: []
-    de5c7159-4971-4bf5-85f9-f9f4ab9bf54c:
+    9d93aad7-4e7a-4bed-bf97-d1fdf6b10d9d:
       size:
         width: 60
         height: 60
       position:
-        x: 170
-        'y': 180
+        x: 290
+        'y': -30
       z: 1
       embeds: []
-    b422a5d3-a933-4758-9e9a-4ed7f70acbb3:
+    de78acbe-b0b8-44df-bda2-8aafa58ccce9:
       size:
         width: 60
         height: 60
       position:
-        x: 280
-        'y': 180
-      z: 1
-      parent: de78acbe-b0b8-44df-bda2-8aafa58ccce9
+        x: 290
+        'y': 170
+      z: 0
       embeds: []
     2db1c3d7-c460-4fca-b705-2d9cc49e6544:
       size:
         width: 60
         height: 60
       position:
-        x: 170
-        'y': 270
+        x: 190
+        'y': 70
       z: 1
       embeds: []
     747b90ec-c810-4b21-9903-b02f5eb329f1:
@@ -825,8 +834,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 70
-        'y': 270
+        x: 190
+        'y': 170
       z: 1
       embeds: []
       isassociatedwith:
@@ -837,17 +846,7 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: -130
-        'y': 270
+        x: -10
+        'y': 170
       z: 1
       embeds: []
-    de78acbe-b0b8-44df-bda2-8aafa58ccce9:
-      size:
-        width: 100
-        height: 90
-      position:
-        x: 260
-        'y': 160
-      z: 0
-      embeds:
-        - b422a5d3-a933-4758-9e9a-4ed7f70acbb3
