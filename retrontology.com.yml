@@ -9,13 +9,14 @@ Description: >-
   Amazon RDS database instance. You will be billed for the AWS resources used if
   you create a stack from this template.
 Parameters:
-  EnvironmentName:
-    Description: The name of the VPC environment
-    Type: String
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
     Type: 'AWS::EC2::KeyPair::KeyName'
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  SSLCertificate:
+    Description: ARN of an existing SSL certificate to use for HTTPS
+    Type: String
+    ConstraintDescription: must be an existing SSL Certificate
   InstanceType:
     Description: WebServer EC2 instance type
     Type: String
@@ -452,18 +453,37 @@ Mappings:
       HVM64: ami-01fee56b22f308154
       HVMG2: ami-0fe84a5b4563d8f27
 Resources:
+  ALBSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable HTTP access via port 443 from anywhere
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: 0.0.0.0/0
+      VpcId:
+        'Fn::ImportValue': !Join 
+          - '-'
+          - - !Ref 'AWS::StackName'
+            - vpc
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 414a33b1-fd1d-4a02-b3ec-b437c00c9a65
   ApplicationLoadBalancer:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
     Properties:
       Subnets:
         - 'Fn::ImportValue': !Join 
             - '-'
-            - - !Ref EnvironmentName
+            - - !Ref 'AWS::StackName'
               - subnet-public-1
         - 'Fn::ImportValue': !Join 
             - '-'
-            - - !Ref EnvironmentName
+            - - !Ref 'AWS::StackName'
               - subnet-public-2
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
     Metadata:
       'AWS::CloudFormation::Designer':
         id: 43c68a68-362e-4bb2-809c-ddb42e7c48dc
@@ -474,8 +494,10 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref ALBTargetGroup
       LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Port: '80'
-      Protocol: HTTP
+      Port: '443'
+      Protocol: HTTPS
+      Certificates: 
+        - CertificateArn: !Ref SSLCertificate
     Metadata:
       'AWS::CloudFormation::Designer':
         id: 14b97c56-0c9c-45b5-851b-b52d968acb47
@@ -492,7 +514,7 @@ Resources:
       VpcId:
         'Fn::ImportValue': !Join 
           - '-'
-          - - !Ref EnvironmentName
+          - - !Ref 'AWS::StackName'
             - vpc
       TargetGroupAttributes:
         - Key: stickiness.enabled
@@ -514,11 +536,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: '80'
           ToPort: '80'
-          SourceSecurityGroupId: !Select 
-            - 0
-            - !GetAtt 
-              - ApplicationLoadBalancer
-              - SecurityGroups
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
         - IpProtocol: tcp
           FromPort: '22'
           ToPort: '22'
@@ -526,7 +544,7 @@ Resources:
       VpcId:
         'Fn::ImportValue': !Join 
           - '-'
-          - - !Ref EnvironmentName
+          - - !Ref 'AWS::StackName'
             - vpc
     Metadata:
       'AWS::CloudFormation::Designer':
@@ -537,12 +555,12 @@ Resources:
       VPCZoneIdentifier:
         - 'Fn::ImportValue': !Join 
             - '-'
-            - - !Ref EnvironmentName
-              - subnet-public-1
+            - - !Ref 'AWS::StackName'
+              - subnet-private-1
         - 'Fn::ImportValue': !Join 
             - '-'
-            - - !Ref EnvironmentName
-              - subnet-public-2
+            - - !Ref 'AWS::StackName'
+              - subnet-private-2
       LaunchConfigurationName: !Ref LaunchConfig
       MinSize: '1'
       MaxSize: '5'
@@ -714,7 +732,7 @@ Resources:
       VpcId:
         'Fn::ImportValue': !Join 
           - '-'
-          - - !Ref EnvironmentName
+          - - !Ref 'AWS::StackName'
             - vpc
     Metadata:
       'AWS::CloudFormation::Designer':
@@ -727,11 +745,11 @@ Resources:
       SubnetIds:
         - 'Fn::ImportValue': !Join 
             - '-'
-            - - !Ref EnvironmentName
+            - - !Ref 'AWS::StackName'
               - subnet-private-1
         - 'Fn::ImportValue': !Join 
             - '-'
-            - - !Ref EnvironmentName
+            - - !Ref 'AWS::StackName'
               - subnet-private-2
     Metadata:
       'AWS::CloudFormation::Designer':
@@ -758,7 +776,7 @@ Outputs:
   WebsiteURL:
     Value: !Join 
       - ''
-      - - 'http://'
+      - - 'https://'
         - !GetAtt 
           - ApplicationLoadBalancer
           - DNSName
@@ -769,7 +787,7 @@ Metadata:
     7c44c759-f180-41d9-900e-6ff3b8689749:
       size:
         width: 100
-        height: 80
+        height: 100
       position:
         x: 270
         'y': 280
@@ -793,6 +811,8 @@ Metadata:
         'y': 170
       z: 1
       embeds: []
+      isassociatedwith:
+        - 414a33b1-fd1d-4a02-b3ec-b437c00c9a65
     362849ae-7204-48e6-991d-cbaf04806159:
       size:
         width: 60
@@ -849,4 +869,22 @@ Metadata:
         x: -10
         'y': 170
       z: 1
+      embeds: []
+    414a33b1-fd1d-4a02-b3ec-b437c00c9a65:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -110
+        'y': -30
+      z: 0
+      embeds: []
+    0f725b36-81eb-4dd2-96a9-78fad0509eec:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -10
+        'y': 70
+      z: 0
       embeds: []
