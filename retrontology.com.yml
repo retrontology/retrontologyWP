@@ -603,6 +603,7 @@ Resources:
           wordpress_install:
             - install_cfn
             - install_wordpress
+            - mount_efs
         install_cfn:
           files:
             /etc/cfn/cfn-hup.conf:
@@ -653,8 +654,8 @@ Resources:
         install_wordpress:
           packages:
             yum:
-              php73: []
-              php73-mysqlnd: []
+              php72: []
+              php72-mysqlnd: []
               mysql57: []
               httpd24: []
           sources:
@@ -693,11 +694,27 @@ Resources:
             01_configure_wordpress:
               command: /tmp/create-wp-config
               cwd: /var/www/html/wordpress
+            02_remove_script:
+              command: rm /tmp/create-wp-config
           services:
             sysvinit:
               httpd:
                 enabled: 'true'
                 ensureRunning: 'true'
+        mount_efs:
+          packages:
+            yum:
+              nfs-utils: []
+          commands:
+            01_createdir:
+              command: mkdir -p /var/lib/wordpress/wp-content/
+            02_mount:
+              command: !Sub >
+                mount -t nfs4 -o nfsvers=4.1
+                ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/
+                /var/lib/wordpress/wp-content/
+            03_perms:
+              command: 'chown -R ec2-user:ec2-user /var/lib/wordpress/wp-content'
       'AWS::CloudFormation::Designer':
         id: 2db1c3d7-c460-4fca-b705-2d9cc49e6544
     Properties:
@@ -788,6 +805,55 @@ Resources:
     Metadata:
       'AWS::CloudFormation::Designer':
         id: de78acbe-b0b8-44df-bda2-8aafa58ccce9
+  ElasticFileSystem:
+    Type: 'AWS::EFS::FileSystem'
+    Properties: {}
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: a04d49ae-7344-4df0-b1fa-b68039ae9f56
+  EFSMountPoint1:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Ref ElasticFileSystem
+      SecurityGroups:
+        - !Ref EFSSecurityGroup
+      SubnetId:
+        'Fn::ImportValue': !Join 
+          - '-'
+          - - !Ref 'AWS::StackName'
+            - subnet-private-1
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 2d8cc840-fe1b-43ca-aae6-fc96df6dead8
+  EFSMountPoint2:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Ref ElasticFileSystem
+      SecurityGroups:
+        - !Ref EFSSecurityGroup
+      SubnetId:
+        'Fn::ImportValue': !Join 
+          - '-'
+          - - !Ref 'AWS::StackName'
+            - subnet-private-2
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 7f32758e-8b9e-4958-af93-ddf4b66fd99a
+  EFSSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Open EFS for access internally to app servers
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          SourceSecurityGroupId: !Ref WebServerSecurityGroup
+      VpcId:
+        'Fn::ImportValue': !Join 
+          - '-'
+          - - !Ref 'AWS::StackName'
+            - vpc
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 1acf09b2-6e48-4999-86f9-e3d3510ddaed
 Outputs:
   WebsiteURL:
     Value: !Join 
@@ -802,11 +868,11 @@ Metadata:
   'AWS::CloudFormation::Designer':
     7c44c759-f180-41d9-900e-6ff3b8689749:
       size:
-        width: 100
+        width: 90
         height: 90
       position:
-        x: 400
-        'y': 70
+        x: 380
+        'y': 10
       z: 1
       embeds: []
     f0ac89f8-9931-4cd3-9337-19983150aea6:
@@ -814,8 +880,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 80
-        'y': 180
+        x: 100
+        'y': 170
       z: 1
       embeds: []
     43c68a68-362e-4bb2-809c-ddb42e7c48dc:
@@ -823,8 +889,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: -120
-        'y': 180
+        x: -100
+        'y': 170
       z: 1
       embeds: []
       isassociatedwith:
@@ -834,8 +900,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 180
-        'y': -20
+        x: 200
+        'y': -30
       z: 1
       embeds: []
     9d93aad7-4e7a-4bed-bf97-d1fdf6b10d9d:
@@ -844,7 +910,7 @@ Metadata:
         height: 60
       position:
         x: 300
-        'y': -20
+        'y': -30
       z: 1
       embeds: []
     de78acbe-b0b8-44df-bda2-8aafa58ccce9:
@@ -853,7 +919,7 @@ Metadata:
         height: 60
       position:
         x: 300
-        'y': 80
+        'y': 70
       z: 1
       embeds: []
     2db1c3d7-c460-4fca-b705-2d9cc49e6544:
@@ -861,8 +927,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 180
-        'y': 80
+        x: 200
+        'y': 70
       z: 1
       embeds: []
     747b90ec-c810-4b21-9903-b02f5eb329f1:
@@ -870,8 +936,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 180
-        'y': 180
+        x: 200
+        'y': 170
       z: 1
       embeds: []
       isassociatedwith:
@@ -882,8 +948,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: -20
-        'y': 140
+        x: 0
+        'y': 130
       z: 1
       embeds: []
     414a33b1-fd1d-4a02-b3ec-b437c00c9a65:
@@ -891,8 +957,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: -120
-        'y': -20
+        x: -100
+        'y': -30
       z: 1
       embeds: []
     10c646bf-a833-4785-a98c-d45c0db35077:
@@ -900,7 +966,43 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: -20
-        'y': 220
+        x: 0
+        'y': 210
       z: 1
+      embeds: []
+    a04d49ae-7344-4df0-b1fa-b68039ae9f56:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 500
+        'y': 160
+      z: 1
+      embeds: []
+    7f32758e-8b9e-4958-af93-ddf4b66fd99a:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 400
+        'y': 130
+      z: 1
+      embeds: []
+    2d8cc840-fe1b-43ca-aae6-fc96df6dead8:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 400
+        'y': 200
+      z: 1
+      embeds: []
+    1acf09b2-6e48-4999-86f9-e3d3510ddaed:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 300
+        'y': 170
+      z: 0
       embeds: []
