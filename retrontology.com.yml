@@ -602,8 +602,8 @@ Resources:
         configSets:
           wordpress_install:
             - install_cfn
-            - install_wordpress
             - mount_efs
+            - install_wordpress
         install_cfn:
           files:
             /etc/cfn/cfn-hup.conf:
@@ -651,6 +651,22 @@ Resources:
                 files:
                   - /etc/cfn/cfn-hup.conf
                   - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+        mount_efs:
+          packages:
+            yum:
+              nfs-utils: []
+          commands:
+            01_createdir:
+              command: mkdir -p /mnt/wp-content
+            02_mount:
+              command: !Sub >
+                mount -t nfs4 -o nfsvers=4.1
+                ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/
+                /mnt/wp-content
+            03_create_html:
+             command: mkdir -p /var/www/html
+            04_softlink:
+              command: 'ln -s /mnt/wp-content /var/www/html/wp-content'
         install_wordpress:
           packages:
             yum:
@@ -659,7 +675,7 @@ Resources:
               mysql57: []
               httpd24: []
           sources:
-            /var/www/html: 'http://wordpress.org/latest.tar.gz'
+            /tmp/wp: 'http://wordpress.org/latest.tar.gz'
           files:
             /tmp/create-wp-config:
               content: !Join 
@@ -667,8 +683,8 @@ Resources:
                 - - |
                     #!/bin/bash
                   - >
-                    cp /var/www/html/wordpress/wp-config-sample.php
-                    /var/www/html/wordpress/wp-config.php
+                    cp /tmp/wp/wordpress/wp-config-sample.php
+                    /tmp/wp/wordpress/wp-config.php
                   - sed -i "s/'database_name_here'/'
                   - !Ref DBName
                   - |
@@ -693,28 +709,26 @@ Resources:
           commands:
             01_configure_wordpress:
               command: /tmp/create-wp-config
-              cwd: /var/www/html/wordpress
+              cwd: /tmp/wp/wordpress
             02_remove_script:
               command: rm /tmp/create-wp-config
+            03_copy_content:
+              command: mv /tmp/wp/wordpress/wp-content/* /mnt/wp-content/
+            04_remove_content:
+              command: rm -r /tmp/wp/wordpress/wp-content
+            05_move_up:
+              command: mv /tmp/wp/wordpress/* /var/www/html/
+            06_remove_old:
+              command: rm -r /tmp/wp
+            07_perms_mnt:
+              command: 'chown -R apache:apache /mnt/wp-content'
+            08_perms_html:
+              command: 'chown -R apache:apache /var/www/html/wp-content'
           services:
             sysvinit:
               httpd:
                 enabled: 'true'
                 ensureRunning: 'true'
-        mount_efs:
-          packages:
-            yum:
-              nfs-utils: []
-          commands:
-            01_createdir:
-              command: mkdir -p /var/lib/wordpress/wp-content/
-            02_mount:
-              command: !Sub >
-                mount -t nfs4 -o nfsvers=4.1
-                ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/
-                /var/lib/wordpress/wp-content/
-            03_perms:
-              command: 'chown -R ec2-user:ec2-user /var/lib/wordpress/wp-content'
       'AWS::CloudFormation::Designer':
         id: 2db1c3d7-c460-4fca-b705-2d9cc49e6544
     Properties:
@@ -858,11 +872,10 @@ Outputs:
   WebsiteURL:
     Value: !Join 
       - ''
-      - - 'https://'
+      - - 'http://'
         - !GetAtt 
           - ApplicationLoadBalancer
           - DNSName
-        - /wordpress
     Description: WordPress Website
 Metadata:
   'AWS::CloudFormation::Designer':
