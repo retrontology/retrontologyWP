@@ -522,15 +522,19 @@ Resources:
           commands:
             01_createdir:
               command: mkdir -p /mnt/wp-content
+              test: '! test -d /mnt/wp-content'
             02_mount:
               command: !Sub >
                 mount -t nfs4 -o nfsvers=4.1
                 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/
                 /mnt/wp-content
+              test: mount | awk '{if ($3 == "/mnt/wp-content") { exit 1}} ENDFILE{exit 0}'
             03_create_html:
              command: mkdir -p /var/www/html
+             test: '! test -d /var/www/html'
             04_softlink:
               command: 'ln -s /mnt/wp-content /var/www/html/wp-content'
+              test: '! test -L /var/www/html/wp-content'
         php_update:
           packages:
             yum:
@@ -538,6 +542,7 @@ Resources:
           commands:
             01_enable_php81:
               command: amazon-linux-extras enable php8.1
+              test: amazon-linux-extras | grep php8.1 | awk '{if ($3 == "enabled") {exit 1}} ENDFILE{exit 0}'
         php_deps:
           packages:
             yum:
@@ -558,8 +563,10 @@ Resources:
               command: pecl channel-update pecl.php.net
             03_install_imagick:
               command: pecl install imagick
+              test: '! pecl info imagick'
             04_update_ini:
               command: 'echo extension=imagick.so > /etc/php.d/20-imagick.ini'
+              test: '! test -f /etc/php.d/20-imagick.ini'
         install_wordpress:
           packages:
             yum:
@@ -601,16 +608,22 @@ Resources:
             01_configure_wordpress:
               command: /tmp/create-wp-config
               cwd: /tmp/wp/wordpress
+              test: '! test -f /var/www/html/wp-config.php'
             02_remove_script:
               command: rm /tmp/create-wp-config
+              test: 'test -f /tmp/create-wp-config'
             03_copy_content:
               command: mv /tmp/wp/wordpress/wp-content/* /mnt/wp-content/
+              test: '! test -f /var/www/html/wp-content/index.php'
             04_remove_content:
               command: rm -r /tmp/wp/wordpress/wp-content
+              test: 'test -d /tmp/wp/wordpress/wp-content'
             05_move_up:
               command: mv /tmp/wp/wordpress/* /var/www/html/
+              test: '! test -f /var/www/html/index.php'
             06_remove_old:
               command: rm -r /tmp/wp
+              test: 'test -d /tmp/wp'
             07_perms_mnt:
               command: 'chown -R apache:apache /mnt/wp-content'
             08_perms_html:
