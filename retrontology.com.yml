@@ -106,6 +106,53 @@ Parameters:
       - 'true'
       - 'false'
     ConstraintDescription: must be either true or false.
+  MultiAZElastiCache:
+    Default: single-az
+    Description: Create a Multi-AZ MySQL Amazon ElastiCache cluster instance
+    Type: String
+    AllowedValues:
+      - cross-az
+      - single-az
+    ConstraintDescription: must be either 'single-az' or 'cross-az'
+  ECClass:
+    Description: ElastiCache instance class
+    Type: String
+    Default: cache.t4g.small
+    AllowedValues:
+      - cache.m6g.large
+      - cache.m6g.xlarge
+      - cache.m6g.2xlarge
+      - cache.m6g.4xlarge
+      - cache.m6g.8xlarge
+      - cache.m6g.12xlarge
+      - cache.m6g.16xlarge
+      - cache.m6g.24xlarge
+      - cache.m5.large
+      - cache.m5.xlarge
+      - cache.m5.2xlarge
+      - cache.m5.4xlarge
+      - cache.m5.12xlarge
+      - cache.m5.24xlarge
+      - cache.m4.large
+      - cache.m4.xlarge
+      - cache.m4.2xlarge
+      - cache.m4.4xlarge
+      - cache.m4.10xlarge
+      - cache.t4g.micro
+      - cache.t4g.small
+      - cache.t4g.medium
+      - cache.t3.small
+      - cache.t3.medium
+      - cache.t2.micro
+      - cache.t2.small
+      - cache.t2.medium
+  ECNumNodes:
+    Default: '1'
+    Description: The number of nodes in your ElastiCache cluster
+    Type: Number
+    MinValue: '1'
+    MaxValue: '5'
+    ConstraintDescription: must be between 1 and 5 cache instances.
   WebServerCapacity:
     Default: '1'
     Description: The initial number of WebServer instances
@@ -467,6 +514,7 @@ Resources:
             - mount_efs
             - php_update
             - php_deps
+            - install_memcached
             - install_wordpress
         install_cfn:
           files:
@@ -560,6 +608,8 @@ Resources:
               php-intl: []
               ImageMagick: []
               ImageMagick-devel: []
+              libmemcached-devel: []
+              openssl11-devel: []
           commands:
             01_update_pear:
               command: pear channel-update pear.php.net
@@ -568,9 +618,54 @@ Resources:
             03_install_imagick:
               command: pecl install imagick
               test: '! pecl info imagick'
-            04_update_ini:
+            04_imagick_ini:
               command: echo extension=imagick.so > /etc/php.d/20-imagick.ini
               test: '! test -f /etc/php.d/20-imagick.ini'
+        install_memcached:
+          packages:
+            yum:
+              git: []
+              gcc: []
+              gcc-c++: []
+              autoconf: []
+              libevent-devel: []
+              make: []
+              perl-core: []
+              pcre-devel: []
+              wget: []
+              zlib-devel: []
+          commands:
+            01_clone_libmemcached:
+              command: 'git clone https://github.com/awslabs/aws-elasticache-cluster-client-libmemcached'
+              cwd: /tmp
+            02_prepare_libmemcached:
+              command: 'touch configure.ac aclocal.m4 configure Makefile.am Makefile.in && mkdir build'
+              cwd: /tmp/aws-elasticache-cluster-client-libmemcached
+            03_configure_libmemcached:
+              command: ../configure --with-pic --disable-sasl
+              cwd: /tmp/aws-elasticache-cluster-client-libmemcached/build
+            04_build_libmemcached:
+              command: make -j$(nproc)
+              cwd: /tmp/aws-elasticache-cluster-client-libmemcached/build
+            05_install_libmemcached:
+              command: make install
+              cwd: /tmp/aws-elasticache-cluster-client-libmemcached/build
+            06_clone_memcachedphp:
+              command: 'git clone https://github.com/awslabs/aws-elasticache-cluster-client-memcached-for-php.git'
+              cwd: /tmp
+            07_prepare_memcachedphp:
+              command: 'phpize && mkdir build'
+              cwd: /tmp/aws-elasticache-cluster-client-memcached-for-php
+            08_configure_memcachedphp:
+              command: ../configure --disable-memcached-sasl
+              cwd: /tmp/aws-elasticache-cluster-client-memcached-for-php/build
+            09_build_memcachedphp:
+              command: make -j$(nproc)
+              cwd: /tmp/aws-elasticache-cluster-client-memcached-for-php/build
+            10_install_memcachedphp:
+              command: make install
+              cwd: /tmp/aws-elasticache-cluster-client-memcached-for-php/build
+              
         install_wordpress:
           packages:
             yum:
@@ -780,6 +875,50 @@ Resources:
     Metadata:
       'AWS::CloudFormation::Designer':
         id: 1acf09b2-6e48-4999-86f9-e3d3510ddaed
+  ECSubnetGroup:
+    Type: 'AWS::ElastiCache::SubnetGroup'
+    Properties:
+      Description: Subnet Group for ElastiCache cluster
+      SubnetIds:
+        - 'Fn::ImportValue': !Join 
+            - '-'
+            - - !Ref 'AWS::StackName'
+              - subnet-private-1
+        - 'Fn::ImportValue': !Join 
+            - '-'
+            - - !Ref 'AWS::StackName'
+              - subnet-private-2
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 4075728a-3101-4a4c-9aad-46e05c502a94
+  ElastiCacheInstance:
+    Type: 'AWS::ElastiCache::CacheCluster'
+    Properties:
+      AZMode: !Ref MultiAZElastiCache
+      CacheNodeType: !Ref ECClass
+      CacheSubnetGroupName: !Ref ECSubnetGroup
+      Engine: memcached
+      NumCacheNodes: !Ref ECNumNodes
+      VpcSecurityGroupIds:
+        - !Ref ECEC2SecurityGroup
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 35400c6f-f5a3-4a02-8dd1-45481222602f
+  ECEC2SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Open CC for access internally to app servers
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          SourceSecurityGroupId: !Ref WebServerSecurityGroup
+      VpcId:
+        'Fn::ImportValue': !Join 
+          - '-'
+          - - !Ref 'AWS::StackName'
+            - vpc
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 686281a3-ada2-4a10-af72-f0287cce5d73
 Outputs:
   WebsiteURL:
     Value: !Join 
@@ -796,8 +935,8 @@ Metadata:
         width: 90
         height: 90
       position:
-        x: 470
-        'y': -90
+        x: 460
+        'y': -190
       z: 1
       embeds: []
     f0ac89f8-9931-4cd3-9337-19983150aea6:
@@ -834,7 +973,7 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 250
+        x: 350
         'y': -80
       z: 1
       embeds: []
@@ -843,7 +982,7 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 350
+        x: 460
         'y': -80
       z: 1
       embeds: []
@@ -930,4 +1069,33 @@ Metadata:
         x: 250
         'y': 20
       z: 1
+      embeds: []
+    4075728a-3101-4a4c-9aad-46e05c502a94:
+      size:
+        width: 90
+        height: 90
+      position:
+        x: 350
+        'y': -190
+      z: 0
+      embeds: []
+    35400c6f-f5a3-4a02-8dd1-45481222602f:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 250
+        'y': -180
+      z: 0
+      embeds: []
+      iscontainedinside:
+        - 4075728a-3101-4a4c-9aad-46e05c502a94
+    686281a3-ada2-4a10-af72-f0287cce5d73:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 150
+        'y': -180
+      z: 0
       embeds: []
