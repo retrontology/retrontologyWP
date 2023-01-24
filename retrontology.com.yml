@@ -528,12 +528,14 @@ Resources:
                 mount -t nfs4 -o nfsvers=4.1
                 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/
                 /mnt/wp-content
-              test: mount | awk '{if ($3 == "/mnt/wp-content") { exit 1}} ENDFILE{exit 0}'
+              test: >-
+                mount | awk '{if ($3 == "/mnt/wp-content") { exit 1}}
+                ENDFILE{exit 0}'
             03_create_html:
-             command: mkdir -p /var/www/html
-             test: '! test -d /var/www/html'
+              command: mkdir -p /var/www/html
+              test: '! test -d /var/www/html'
             04_softlink:
-              command: 'ln -s /mnt/wp-content /var/www/html/wp-content'
+              command: ln -s /mnt/wp-content /var/www/html/wp-content
               test: '! test -L /var/www/html/wp-content'
         php_update:
           packages:
@@ -542,7 +544,9 @@ Resources:
           commands:
             01_enable_php81:
               command: amazon-linux-extras enable php8.1
-              test: amazon-linux-extras | grep php8.1 | awk '{if ($3 == "enabled") {exit 1}} ENDFILE{exit 0}'
+              test: >-
+                amazon-linux-extras | grep php8.1 | awk '{if ($3 == "enabled")
+                {exit 1}} ENDFILE{exit 0}'
         php_deps:
           packages:
             yum:
@@ -565,7 +569,7 @@ Resources:
               command: pecl install imagick
               test: '! pecl info imagick'
             04_update_ini:
-              command: 'echo extension=imagick.so > /etc/php.d/20-imagick.ini'
+              command: echo extension=imagick.so > /etc/php.d/20-imagick.ini
               test: '! test -f /etc/php.d/20-imagick.ini'
         install_wordpress:
           packages:
@@ -601,7 +605,10 @@ Resources:
                     - Endpoint.Address
                   - |
                     '/g" wp-config.php
-                  - sed -i "/\/\* Add any custom values between this line and the \"stop editing\" line. \*\//a define('FS_METHOD', 'direct');" wp-config.php
+                  - >-
+                    sed -i "/\/\* Add any custom values between this line and
+                    the \"stop editing\" line. \*\//a define('FS_METHOD',
+                    'direct');" wp-config.php
               mode: '000500'
               owner: root
               group: root
@@ -612,19 +619,19 @@ Resources:
               test: '! test -f /var/www/html/wp-config.php'
             02_remove_script:
               command: rm /tmp/create-wp-config
-              test: 'test -f /tmp/create-wp-config'
+              test: test -f /tmp/create-wp-config
             03_copy_content:
               command: mv /tmp/wp/wordpress/wp-content/* /mnt/wp-content/
               test: '! test -f /var/www/html/wp-content/index.php'
             04_remove_content:
               command: rm -r /tmp/wp/wordpress/wp-content
-              test: 'test -d /tmp/wp/wordpress/wp-content'
+              test: test -d /tmp/wp/wordpress/wp-content
             05_move_up:
               command: mv /tmp/wp/wordpress/* /var/www/html/
               test: '! test -f /var/www/html/index.php'
             06_remove_old:
               command: rm -r /tmp/wp
-              test: 'test -d /tmp/wp'
+              test: test -d /tmp/wp
             07_perms_mnt:
               command: 'chown -R apache:apache /mnt/wp-content'
             08_perms_html:
@@ -789,8 +796,8 @@ Metadata:
         width: 90
         height: 90
       position:
-        x: 380
-        'y': 10
+        x: 450
+        'y': -90
       z: 1
       embeds: []
     f0ac89f8-9931-4cd3-9337-19983150aea6:
@@ -798,8 +805,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 100
-        'y': 170
+        x: 50
+        'y': 120
       z: 1
       embeds: []
     43c68a68-362e-4bb2-809c-ddb42e7c48dc:
@@ -807,8 +814,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: -100
-        'y': 170
+        x: -170
+        'y': 120
       z: 1
       embeds: []
       isassociatedwith:
@@ -818,8 +825,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 200
-        'y': -30
+        x: 150
+        'y': -80
       z: 1
       embeds: []
     9d93aad7-4e7a-4bed-bf97-d1fdf6b10d9d:
@@ -827,8 +834,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 300
-        'y': -30
+        x: 250
+        'y': -80
       z: 1
       embeds: []
     de78acbe-b0b8-44df-bda2-8aafa58ccce9:
@@ -836,8 +843,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 300
-        'y': 70
+        x: 350
+        'y': -80
       z: 1
       embeds: []
     2db1c3d7-c460-4fca-b705-2d9cc49e6544:
@@ -845,8 +852,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 200
-        'y': 70
+        x: 150
+        'y': 20
       z: 1
       embeds: []
     747b90ec-c810-4b21-9903-b02f5eb329f1:
@@ -854,8 +861,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 200
-        'y': 170
+        x: 150
+        'y': 120
       z: 1
       embeds: []
       isassociatedwith:
@@ -866,8 +873,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 0
-        'y': 130
+        x: -60
+        'y': 80
       z: 1
       embeds: []
     414a33b1-fd1d-4a02-b3ec-b437c00c9a65:
@@ -875,8 +882,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: -100
-        'y': -30
+        x: -170
+        'y': -80
       z: 1
       embeds: []
     10c646bf-a833-4785-a98c-d45c0db35077:
@@ -884,8 +891,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 0
-        'y': 210
+        x: -60
+        'y': 160
       z: 1
       embeds: []
     a04d49ae-7344-4df0-b1fa-b68039ae9f56:
@@ -893,8 +900,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 500
-        'y': 160
+        x: 350
+        'y': -220
       z: 1
       embeds: []
     7f32758e-8b9e-4958-af93-ddf4b66fd99a:
@@ -902,8 +909,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 400
-        'y': 130
+        x: 250
+        'y': -180
       z: 1
       embeds: []
     2d8cc840-fe1b-43ca-aae6-fc96df6dead8:
@@ -911,8 +918,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 400
-        'y': 200
+        x: 250
+        'y': -260
       z: 1
       embeds: []
     1acf09b2-6e48-4999-86f9-e3d3510ddaed:
@@ -920,7 +927,7 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 300
-        'y': 170
-      z: 0
+        x: 150
+        'y': -220
+      z: 1
       embeds: []
