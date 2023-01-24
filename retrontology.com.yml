@@ -601,6 +601,7 @@ Resources:
                     - Endpoint.Address
                   - |
                     '/g" wp-config.php
+                  - sed -i "/\/\* Add any custom values between this line and the \"stop editing\" line. \*\//a define('FS_METHOD', 'direct');" wp-config.php
               mode: '000500'
               owner: root
               group: root
