@@ -796,7 +796,7 @@ Metadata:
         width: 90
         height: 90
       position:
-        x: 450
+        x: 470
         'y': -90
       z: 1
       embeds: []
@@ -901,7 +901,7 @@ Metadata:
         height: 60
       position:
         x: 350
-        'y': -220
+        'y': 120
       z: 1
       embeds: []
     7f32758e-8b9e-4958-af93-ddf4b66fd99a:
@@ -910,7 +910,7 @@ Metadata:
         height: 60
       position:
         x: 250
-        'y': -180
+        'y': 120
       z: 1
       embeds: []
     2d8cc840-fe1b-43ca-aae6-fc96df6dead8:
@@ -918,8 +918,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 250
-        'y': -260
+        x: 350
+        'y': 20
       z: 1
       embeds: []
     1acf09b2-6e48-4999-86f9-e3d3510ddaed:
@@ -927,7 +927,7 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 150
-        'y': -220
+        x: 250
+        'y': 20
       z: 1
       embeds: []
