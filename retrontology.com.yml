@@ -13,10 +13,10 @@ Parameters:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
     Type: 'AWS::EC2::KeyPair::KeyName'
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
-  SSLCertificate:
-    Description: ARN of an existing SSL certificate to use for HTTPS
+  DomainName:
+    Description: The domain you want to use for the Wordpress site
     Type: String
-    ConstraintDescription: must be an existing SSL Certificate
+    ConstraintDescription: must be a hosted zone in your account
   InstanceType:
     Description: WebServer EC2 instance type
     Type: String
@@ -30,14 +30,6 @@ Parameters:
       - t4g.xlarge
       - t4g.2xlarge
     ConstraintDescription: must be a valid EC2 instance type.
-  SSHLocation:
-    Description: The IP address range that can be used to SSH to the EC2 instances
-    Type: String
-    MinLength: '9'
-    MaxLength: '18'
-    Default: 0.0.0.0/0
-    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
-    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
   DBClass:
     Description: Database instance class
     Type: String
@@ -183,113 +175,6 @@ Mappings:
       Arch: ARM64
     t4g.2xlarge:
       Arch: ARM64
-  AWSInstanceType2NATArch:
-    t1.micro:
-      Arch: NATHVM64
-    t2.nano:
-      Arch: NATHVM64
-    t2.micro:
-      Arch: NATHVM64
-    t2.small:
-      Arch: NATHVM64
-    t2.medium:
-      Arch: NATHVM64
-    t2.large:
-      Arch: NATHVM64
-    m1.small:
-      Arch: NATHVM64
-    m1.medium:
-      Arch: NATHVM64
-    m1.large:
-      Arch: NATHVM64
-    m1.xlarge:
-      Arch: NATHVM64
-    m2.xlarge:
-      Arch: NATHVM64
-    m2.2xlarge:
-      Arch: NATHVM64
-    m2.4xlarge:
-      Arch: NATHVM64
-    m3.medium:
-      Arch: NATHVM64
-    m3.large:
-      Arch: NATHVM64
-    m3.xlarge:
-      Arch: NATHVM64
-    m3.2xlarge:
-      Arch: NATHVM64
-    m4.large:
-      Arch: NATHVM64
-    m4.xlarge:
-      Arch: NATHVM64
-    m4.2xlarge:
-      Arch: NATHVM64
-    m4.4xlarge:
-      Arch: NATHVM64
-    m4.10xlarge:
-      Arch: NATHVM64
-    c1.medium:
-      Arch: NATHVM64
-    c1.xlarge:
-      Arch: NATHVM64
-    c3.large:
-      Arch: NATHVM64
-    c3.xlarge:
-      Arch: NATHVM64
-    c3.2xlarge:
-      Arch: NATHVM64
-    c3.4xlarge:
-      Arch: NATHVM64
-    c3.8xlarge:
-      Arch: NATHVM64
-    c4.large:
-      Arch: NATHVM64
-    c4.xlarge:
-      Arch: NATHVM64
-    c4.2xlarge:
-      Arch: NATHVM64
-    c4.4xlarge:
-      Arch: NATHVM64
-    c4.8xlarge:
-      Arch: NATHVM64
-    g2.2xlarge:
-      Arch: NATHVMG2
-    g2.8xlarge:
-      Arch: NATHVMG2
-    r3.large:
-      Arch: NATHVM64
-    r3.xlarge:
-      Arch: NATHVM64
-    r3.2xlarge:
-      Arch: NATHVM64
-    r3.4xlarge:
-      Arch: NATHVM64
-    r3.8xlarge:
-      Arch: NATHVM64
-    i2.xlarge:
-      Arch: NATHVM64
-    i2.2xlarge:
-      Arch: NATHVM64
-    i2.4xlarge:
-      Arch: NATHVM64
-    i2.8xlarge:
-      Arch: NATHVM64
-    d2.xlarge:
-      Arch: NATHVM64
-    d2.2xlarge:
-      Arch: NATHVM64
-    d2.4xlarge:
-      Arch: NATHVM64
-    d2.8xlarge:
-      Arch: NATHVM64
-    hi1.4xlarge:
-      Arch: NATHVM64
-    hs1.8xlarge:
-      Arch: NATHVM64
-    cr1.8xlarge:
-      Arch: NATHVM64
-    cc2.8xlarge:
-      Arch: NATHVM64
   AWSRegionArch2AMI:
     af-south-1:
       HVM64: ami-064cc455f8a1ef504
@@ -362,6 +247,82 @@ Mappings:
       HVM64: ami-01fee56b22f308154
       HVMG2: ami-0fe84a5b4563d8f27
 Resources:
+  HostedZone:
+    Type: 'AWS::Route53::HostedZone'
+    Properties:
+      Name: !Ref DomainName
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: bb790a58-d9bc-4043-b0ca-c0fee5bd1c46
+  DNSBaseRecord:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      AliasTarget:
+        HostedZoneId: !GetAtt 
+          - ApplicationLoadBalancer
+          - CanonicalHostedZoneID
+        DNSName: !GetAtt 
+          - ApplicationLoadBalancer
+          - DNSName
+      HostedZoneId: !Ref HostedZone
+      Name: !Join 
+        - ''
+        - - !Ref DomainName
+          - .
+      Type: A
+      Comment: Base domain for Wordpress
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 2af4ee94-6788-415c-b84b-3718f8e03d3d
+  DNSWWWRecord:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      AliasTarget:
+        HostedZoneId: !GetAtt 
+          - ApplicationLoadBalancer
+          - CanonicalHostedZoneID
+        DNSName: !GetAtt 
+          - ApplicationLoadBalancer
+          - DNSName
+      HostedZoneId: !Ref HostedZone
+      Name: !Join 
+        - ''
+        - - www.
+          - !Ref DomainName
+          - .
+      Type: A
+      Comment: www domain for Wordpress
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 1489d6ef-a335-449b-9286-b36f365b1fd9
+  CertificateBase:
+    Type: 'AWS::CertificateManager::Certificate'
+    Properties:
+      DomainName: !Ref DomainName
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZone
+      ValidationMethod: DNS
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 345fc7cd-b48e-4505-9eb2-002e6ecfb7b5
+  CertificateWWW:
+    Type: 'AWS::CertificateManager::Certificate'
+    Properties:
+      DomainName: !Join 
+        - ''
+        - - www.
+          - !Ref DomainName
+      DomainValidationOptions:
+        - DomainName: !Join 
+            - ''
+            - - www.
+              - !Ref DomainName
+          HostedZoneId: !Ref HostedZone
+      ValidationMethod: DNS
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: e004fa93-f6e9-440c-af70-44a9d75b2945
   ALBSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
@@ -410,7 +371,8 @@ Resources:
       Port: '443'
       Protocol: HTTPS
       Certificates:
-        - CertificateArn: !Ref SSLCertificate
+        - CertificateArn: !Ref CertificateWWW
+        - CertificateArn: !Ref CertificateBase
     Metadata:
       'AWS::CloudFormation::Designer':
         id: 14b97c56-0c9c-45b5-851b-b52d968acb47
@@ -465,7 +427,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: '22'
           ToPort: '22'
-          CidrIp: !Ref SSHLocation
+          CidrIp: 10.42.0.0/16
       VpcId:
         'Fn::ImportValue': !Join 
           - '-'
@@ -636,10 +598,14 @@ Resources:
               zlib-devel: []
           commands:
             01_clone_libmemcached:
-              command: 'git clone https://github.com/awslabs/aws-elasticache-cluster-client-libmemcached'
+              command: >-
+                git clone
+                https://github.com/awslabs/aws-elasticache-cluster-client-libmemcached
               cwd: /tmp
             02_prepare_libmemcached:
-              command: 'touch configure.ac aclocal.m4 configure Makefile.am Makefile.in && mkdir build'
+              command: >-
+                touch configure.ac aclocal.m4 configure Makefile.am Makefile.in
+                && mkdir build
               cwd: /tmp/aws-elasticache-cluster-client-libmemcached
             03_configure_libmemcached:
               command: ../configure --with-pic --disable-sasl
@@ -651,10 +617,12 @@ Resources:
               command: make install
               cwd: /tmp/aws-elasticache-cluster-client-libmemcached/build
             06_clone_memcachedphp:
-              command: 'git clone https://github.com/awslabs/aws-elasticache-cluster-client-memcached-for-php.git'
+              command: >-
+                git clone
+                https://github.com/awslabs/aws-elasticache-cluster-client-memcached-for-php.git
               cwd: /tmp
             07_prepare_memcachedphp:
-              command: 'phpize'
+              command: phpize
               cwd: /tmp/aws-elasticache-cluster-client-memcached-for-php
             08_configure_memcachedphp:
               command: ../configure --disable-memcached-sasl
@@ -665,7 +633,9 @@ Resources:
             10_install_memcachedphp:
               command: make install
               cwd: /tmp/aws-elasticache-cluster-client-memcached-for-php/build
-              
+            11_memcached_ini:
+              command: echo extension=memcached.so > /etc/php.d/20-memcached.ini
+              test: '! test -f /etc/php.d/20-memcached.ini'
         install_wordpress:
           packages:
             yum:
@@ -724,13 +694,16 @@ Resources:
             05_move_up:
               command: mv /tmp/wp/wordpress/* /var/www/html/
               test: '! test -f /var/www/html/index.php'
-            06_remove_old:
+            06_touch_htaccess:
+              command: touch /var/www/html/.htaccess
+              test: '! test -f /var/www/html/.htaccess'
+            07_remove_old:
               command: rm -r /tmp/wp
               test: test -d /tmp/wp
-            07_perms_mnt:
-              command: 'chown -R apache:apache /mnt/wp-content'
-            08_perms_html:
-              command: 'chown -R apache:apache /var/www/html/wp-content'
+            08_perms:
+              command: >-
+                chown -R apache:apache /mnt/wp-content /var/www/html/wp-content
+                /var/www/html/.htaccess /var/www/html/wp-config.php
           services:
             sysvinit:
               httpd:
@@ -920,14 +893,23 @@ Resources:
       'AWS::CloudFormation::Designer':
         id: 686281a3-ada2-4a10-af72-f0287cce5d73
 Outputs:
-  WebsiteURL:
+  LoadBalancerURL:
+    Description: The address to use for the CNAME value of the DNS entry
+    Value: !GetAtt 
+      - ApplicationLoadBalancer
+      - DNSName
+  MemcacheURL:
+    Description: >-
+      The address and port to use for the memcached URL in whichever plugin you
+      choose
     Value: !Join 
-      - ''
-      - - 'http://'
+      - ':'
+      - - !GetAtt 
+          - ElastiCacheInstance
+          - ConfigurationEndpoint.Address
         - !GetAtt 
-          - ApplicationLoadBalancer
-          - DNSName
-    Description: WordPress Website
+          - ElastiCacheInstance
+          - ConfigurationEndpoint.Port
 Metadata:
   'AWS::CloudFormation::Designer':
     7c44c759-f180-41d9-900e-6ff3b8689749:
@@ -935,8 +917,8 @@ Metadata:
         width: 90
         height: 90
       position:
-        x: 460
-        'y': -190
+        x: 600
+        'y': 10
       z: 1
       embeds: []
     f0ac89f8-9931-4cd3-9337-19983150aea6:
@@ -944,8 +926,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 50
-        'y': 120
+        x: 200
+        'y': 220
       z: 1
       embeds: []
     43c68a68-362e-4bb2-809c-ddb42e7c48dc:
@@ -953,8 +935,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: -170
-        'y': 120
+        x: -20
+        'y': 220
       z: 1
       embeds: []
       isassociatedwith:
@@ -964,8 +946,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 150
-        'y': -80
+        x: 300
+        'y': 20
       z: 1
       embeds: []
     9d93aad7-4e7a-4bed-bf97-d1fdf6b10d9d:
@@ -973,8 +955,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 350
-        'y': -80
+        x: 400
+        'y': 20
       z: 1
       embeds: []
     de78acbe-b0b8-44df-bda2-8aafa58ccce9:
@@ -982,8 +964,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 460
-        'y': -80
+        x: 500
+        'y': 20
       z: 1
       embeds: []
     2db1c3d7-c460-4fca-b705-2d9cc49e6544:
@@ -991,8 +973,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 150
-        'y': 20
+        x: 300
+        'y': 120
       z: 1
       embeds: []
     747b90ec-c810-4b21-9903-b02f5eb329f1:
@@ -1000,8 +982,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 150
-        'y': 120
+        x: 300
+        'y': 220
       z: 1
       embeds: []
       isassociatedwith:
@@ -1012,8 +994,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: -60
-        'y': 80
+        x: 90
+        'y': 180
       z: 1
       embeds: []
     414a33b1-fd1d-4a02-b3ec-b437c00c9a65:
@@ -1021,8 +1003,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: -170
-        'y': -80
+        x: -20
+        'y': 20
       z: 1
       embeds: []
     10c646bf-a833-4785-a98c-d45c0db35077:
@@ -1030,8 +1012,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: -60
-        'y': 160
+        x: 90
+        'y': 260
       z: 1
       embeds: []
     a04d49ae-7344-4df0-b1fa-b68039ae9f56:
@@ -1039,8 +1021,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 350
-        'y': 120
+        x: 600
+        'y': -100
       z: 1
       embeds: []
     7f32758e-8b9e-4958-af93-ddf4b66fd99a:
@@ -1048,8 +1030,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 250
-        'y': 120
+        x: 500
+        'y': -60
       z: 1
       embeds: []
     2d8cc840-fe1b-43ca-aae6-fc96df6dead8:
@@ -1057,8 +1039,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 350
-        'y': 20
+        x: 500
+        'y': -140
       z: 1
       embeds: []
     1acf09b2-6e48-4999-86f9-e3d3510ddaed:
@@ -1066,8 +1048,8 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 250
-        'y': 20
+        x: 400
+        'y': -100
       z: 1
       embeds: []
     4075728a-3101-4a4c-9aad-46e05c502a94:
@@ -1075,19 +1057,21 @@ Metadata:
         width: 90
         height: 90
       position:
-        x: 350
-        'y': -190
-      z: 0
+        x: 600
+        'y': 110
+      z: 1
       embeds: []
     35400c6f-f5a3-4a02-8dd1-45481222602f:
       size:
         width: 60
         height: 60
       position:
-        x: 250
-        'y': -180
-      z: 0
+        x: 500
+        'y': 120
+      z: 1
       embeds: []
+      isassociatedwith:
+        - 686281a3-ada2-4a10-af72-f0287cce5d73
       iscontainedinside:
         - 4075728a-3101-4a4c-9aad-46e05c502a94
     686281a3-ada2-4a10-af72-f0287cce5d73:
@@ -1095,7 +1079,56 @@ Metadata:
         width: 60
         height: 60
       position:
-        x: 150
-        'y': -180
+        x: 400
+        'y': 120
+      z: 1
+      embeds: []
+    345fc7cd-b48e-4505-9eb2-002e6ecfb7b5:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 50
+        'y': 80
+      z: 1
+      embeds: []
+      dependson:
+        - 2af4ee94-6788-415c-b84b-3718f8e03d3d
+    2af4ee94-6788-415c-b84b-3718f8e03d3d:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -130
+        'y': 180
+      z: 0
+      embeds: []
+    e004fa93-f6e9-440c-af70-44a9d75b2945:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 130
+        'y': 80
+      z: 1
+      embeds: []
+      dependson:
+        - 1489d6ef-a335-449b-9286-b36f365b1fd9
+    1489d6ef-a335-449b-9286-b36f365b1fd9:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -130
+        'y': 260
+      z: 0
+      embeds: []
+    bb790a58-d9bc-4043-b0ca-c0fee5bd1c46:
+      size:
+        width: 140
+        height: 140
+      position:
+        x: -320
+        'y': 190
       z: 0
       embeds: []
