@@ -934,20 +934,20 @@ Resources:
                     - Endpoint.Address
                   - |
                     '/g" wp-config.php
-                  - >-
+                  - >
                     sed -i "/\/\* Add any custom values between this line and
                     the \"stop editing\" line. \*\//a \ \ \ \ 
                     \$_SERVER['HTTPS']='on';" wp-config.php
-                  - >-
+                  - >
                     sed -i "/\/\* Add any custom values between this line and
                     the \"stop editing\" line. \*\//a if
                     (strpos(\$_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !==
                     false)" wp-config.php
-                  - >-
+                  - >
                     sed -i "/\/\* Add any custom values between this line and
                     the \"stop editing\" line. \*\//a 
                     define('FORCE_SSL_ADMIN', true);" wp-config.php
-                  - >-
+                  - >
                     sed -i "/\/\* Add any custom values between this line and
                     the \"stop editing\" line. \*\//a define('FS_METHOD',
                     'direct');" wp-config.php
