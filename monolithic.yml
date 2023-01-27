@@ -936,6 +936,19 @@ Resources:
                     '/g" wp-config.php
                   - >-
                     sed -i "/\/\* Add any custom values between this line and
+                    the \"stop editing\" line. \*\//a \ \ \ \ 
+                    \$_SERVER['HTTPS']='on';" wp-config.php
+                  - >-
+                    sed -i "/\/\* Add any custom values between this line and
+                    the \"stop editing\" line. \*\//a if
+                    (strpos(\$_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !==
+                    false)" wp-config.php
+                  - >-
+                    sed -i "/\/\* Add any custom values between this line and
+                    the \"stop editing\" line. \*\//a 
+                    define('FORCE_SSL_ADMIN', true);" wp-config.php
+                  - >-
+                    sed -i "/\/\* Add any custom values between this line and
                     the \"stop editing\" line. \*\//a define('FS_METHOD',
                     'direct');" wp-config.php
               mode: '000500'
@@ -966,8 +979,7 @@ Resources:
               test: test -d /tmp/wp
             08_perms:
               command: >-
-                chown -R apache:apache /mnt/wp-content /var/www/html/wp-content
-                /var/www/html/.htaccess /var/www/html/wp-config.php
+                chown -R apache:apache /mnt/wp-content /var/www/html/
           services:
             sysvinit:
               httpd:
