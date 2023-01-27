@@ -606,7 +606,8 @@ Resources:
           - !Ref InstanceType
           - Arch
       InstanceType: !Ref BastionType
-      SecurityGroupIds: !Ref BastionEC2SecurityGroup
+      SecurityGroupIds:
+        - !Ref BastionEC2SecurityGroup
       SubnetId: !Ref PublicSubnet1
     Metadata:
       'AWS::CloudFormation::Designer':
