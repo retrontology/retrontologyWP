@@ -945,8 +945,8 @@ Resources:
                     false)" wp-config.php
                   - >
                     sed -i "/\/\* Add any custom values between this line and
-                    the \"stop editing\" line. \*\//a 
-                    define('FORCE_SSL_ADMIN', true);" wp-config.php
+                    the \"stop editing\" line. \*\//a  define('FORCE_SSL_ADMIN',
+                    true);" wp-config.php
                   - >
                     sed -i "/\/\* Add any custom values between this line and
                     the \"stop editing\" line. \*\//a define('FS_METHOD',
@@ -978,8 +978,7 @@ Resources:
               command: rm -r /tmp/wp
               test: test -d /tmp/wp
             08_perms:
-              command: >-
-                chown -R apache:apache /mnt/wp-content /var/www/html/
+              command: 'chown -R apache:apache /mnt/wp-content /var/www/html/'
           services:
             sysvinit:
               httpd:
@@ -1062,6 +1061,8 @@ Resources:
       DBInstanceClass: !Ref DBClass
       AllocatedStorage: !Ref DBAllocatedStorage
       DBSubnetGroupName: !Ref DBSubnetGroup
+      BackupRetentionPeriod: 3
+      DeleteAutomatedBackups: False
       VPCSecurityGroups:
         - !GetAtt 
           - DBEC2SecurityGroup
@@ -1071,7 +1072,10 @@ Resources:
         id: de78acbe-b0b8-44df-bda2-8aafa58ccce9
   ElasticFileSystem:
     Type: 'AWS::EFS::FileSystem'
-    Properties: {}
+    Properties:
+      BackupPolicy:
+        Status: ENABLED
+      Encrypted: true
     Metadata:
       'AWS::CloudFormation::Designer':
         id: a04d49ae-7344-4df0-b1fa-b68039ae9f56
@@ -1234,6 +1238,8 @@ Metadata:
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
     9d93aad7-4e7a-4bed-bf97-d1fdf6b10d9d:
       size:
         width: 60
@@ -1245,6 +1251,8 @@ Metadata:
       parent: 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
       embeds: []
       iscontainedinside:
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
@@ -1334,6 +1342,8 @@ Metadata:
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
     10c646bf-a833-4785-a98c-d45c0db35077:
       size:
         width: 60
@@ -1401,6 +1411,8 @@ Metadata:
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
     4075728a-3101-4a4c-9aad-46e05c502a94:
       size:
         width: 80
@@ -1446,6 +1458,8 @@ Metadata:
         - 4075728a-3101-4a4c-9aad-46e05c502a94
         - 4075728a-3101-4a4c-9aad-46e05c502a94
         - 4075728a-3101-4a4c-9aad-46e05c502a94
+        - 4075728a-3101-4a4c-9aad-46e05c502a94
+        - 4075728a-3101-4a4c-9aad-46e05c502a94
     686281a3-ada2-4a10-af72-f0287cce5d73:
       size:
         width: 60
@@ -1457,6 +1471,8 @@ Metadata:
       parent: 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
       embeds: []
       iscontainedinside:
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
@@ -1680,6 +1696,8 @@ Metadata:
         - f8bc1ef4-8f64-4911-a06f-22ff761c0370
         - f8bc1ef4-8f64-4911-a06f-22ff761c0370
         - f8bc1ef4-8f64-4911-a06f-22ff761c0370
+        - f8bc1ef4-8f64-4911-a06f-22ff761c0370
+        - f8bc1ef4-8f64-4911-a06f-22ff761c0370
     c026f38e-9922-40bc-bc50-88f1c4fa9cb7:
       size:
         width: 60
@@ -1713,6 +1731,8 @@ Metadata:
       isassociatedwith:
         - b60dbe78-df76-4220-bbb1-50d84b73fddc
       iscontainedinside:
+        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
+        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
         - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
         - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
         - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
@@ -1798,6 +1818,8 @@ Metadata:
         - d9499d33-286d-492c-9881-976932f380be
         - d9499d33-286d-492c-9881-976932f380be
         - d9499d33-286d-492c-9881-976932f380be
+        - d9499d33-286d-492c-9881-976932f380be
+        - d9499d33-286d-492c-9881-976932f380be
     8115054e-8d32-459c-a1ca-bf6204ba9291:
       size:
         width: 60
@@ -1808,6 +1830,8 @@ Metadata:
       z: 3
       parent: 59defcc5-0aa0-422b-92a9-6918a8a982fb
       embeds: []
+      isassociatedwith:
+        - 205bc594-8b09-48a5-a4ca-2b127d5971dd
       iscontainedinside:
         - 59defcc5-0aa0-422b-92a9-6918a8a982fb
         - 59defcc5-0aa0-422b-92a9-6918a8a982fb
@@ -1824,6 +1848,8 @@ Metadata:
       parent: 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
       embeds: []
       iscontainedinside:
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
