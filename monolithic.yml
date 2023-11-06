@@ -390,13 +390,6 @@ Resources:
     Metadata:
       'AWS::CloudFormation::Designer':
         id: 3b10dc31-0923-4db1-96de-9e6db4c26eb0
-  NatGateway2EIP:
-    Type: 'AWS::EC2::EIP'
-    Properties:
-      Domain: vpc
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: c026f38e-9922-40bc-bc50-88f1c4fa9cb7
   NatGateway1:
     Type: 'AWS::EC2::NatGateway'
     Properties:
@@ -405,14 +398,6 @@ Resources:
     Metadata:
       'AWS::CloudFormation::Designer':
         id: 809aad88-72eb-4a7a-b9ce-1f55e44e5f06
-  NatGateway2:
-    Type: 'AWS::EC2::NatGateway'
-    Properties:
-      AllocationId: !GetAtt NatGateway2EIP.AllocationId
-      SubnetId: !Ref PublicSubnet2
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: b60dbe78-df76-4220-bbb1-50d84b73fddc
   PublicRouteTable:
     Type: 'AWS::EC2::RouteTable'
     Properties:
@@ -466,29 +451,10 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable1
       SubnetId: !Ref PrivateSubnet1
-  PrivateRouteTable2:
-    Type: 'AWS::EC2::RouteTable'
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub '${AWS::StackId} Private Routes (AZ2)'
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-  DefaultPrivateRoute2:
-    Type: 'AWS::EC2::Route'
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable2
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway2
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: a6f252b9-bbb2-4107-b401-1f88d679f490
   PrivateSubnet2RouteTableAssociation:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
     Properties:
-      RouteTableId: !Ref PrivateRouteTable2
+      RouteTableId: !Ref PrivateRouteTable1
       SubnetId: !Ref PrivateSubnet2
   HostedZone:
     Type: 'AWS::Route53::HostedZone'
@@ -800,11 +766,8 @@ Resources:
             02_mount:
               command: !Sub >
                 mount -t nfs4 -o nfsvers=4.1
-                ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/
-                /mnt/efs
-              test: >-
-                mount | awk '{if ($3 == "/mnt/efs") { exit 1}}
-                ENDFILE{exit 0}'
+                ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs
+              test: 'mount | awk ''{if ($3 == "/mnt/efs") { exit 1}} ENDFILE{exit 0}'''
             03_create_html:
               command: mkdir -p /var/www/html
               test: '! test -d /var/www/html'
@@ -870,7 +833,8 @@ Resources:
             02_clone_libmemcached:
               command: >-
                 git clone
-                https://github.com/awslabs/aws-elasticache-cluster-client-libmemcached libmemcached
+                https://github.com/awslabs/aws-elasticache-cluster-client-libmemcached
+                libmemcached
               cwd: /mnt/efs/elasticache
               test: '! test -d /mnt/efs/elasticache/libmemcached'
             03_prepare_libmemcached:
@@ -894,7 +858,8 @@ Resources:
             07_clone_memcachedphp:
               command: >-
                 git clone
-                https://github.com/awslabs/aws-elasticache-cluster-client-memcached-for-php.git memcachedphp
+                https://github.com/awslabs/aws-elasticache-cluster-client-memcached-for-php.git
+                memcachedphp
               cwd: /mnt/efs/elasticache
               test: '! test -d /mnt/efs/elasticache/memcachedphp'
             08_prepare_memcachedphp:
@@ -908,7 +873,9 @@ Resources:
             10_build_memcachedphp:
               command: make -j$(nproc)
               cwd: /mnt/efs/elasticache/memcachedphp/build
-              test: '! test -f /mnt/efs/elasticache/memcachedphp/build/modules/memcached.so'
+              test: >-
+                ! test -f
+                /mnt/efs/elasticache/memcachedphp/build/modules/memcached.so
             11_install_memcachedphp:
               command: make install
               cwd: /mnt/efs/elasticache/memcachedphp/build
@@ -1078,7 +1045,7 @@ Resources:
       AllocatedStorage: !Ref DBAllocatedStorage
       DBSubnetGroupName: !Ref DBSubnetGroup
       BackupRetentionPeriod: 3
-      DeleteAutomatedBackups: False
+      DeleteAutomatedBackups: false
       VPCSecurityGroups:
         - !GetAtt 
           - DBEC2SecurityGroup
@@ -1256,6 +1223,11 @@ Metadata:
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
     9d93aad7-4e7a-4bed-bf97-d1fdf6b10d9d:
       size:
         width: 60
@@ -1267,6 +1239,11 @@ Metadata:
       parent: 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
       embeds: []
       iscontainedinside:
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
@@ -1360,6 +1337,11 @@ Metadata:
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
     10c646bf-a833-4785-a98c-d45c0db35077:
       size:
         width: 60
@@ -1429,6 +1411,11 @@ Metadata:
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
     4075728a-3101-4a4c-9aad-46e05c502a94:
       size:
         width: 80
@@ -1476,6 +1463,11 @@ Metadata:
         - 4075728a-3101-4a4c-9aad-46e05c502a94
         - 4075728a-3101-4a4c-9aad-46e05c502a94
         - 4075728a-3101-4a4c-9aad-46e05c502a94
+        - 4075728a-3101-4a4c-9aad-46e05c502a94
+        - 4075728a-3101-4a4c-9aad-46e05c502a94
+        - 4075728a-3101-4a4c-9aad-46e05c502a94
+        - 4075728a-3101-4a4c-9aad-46e05c502a94
+        - 4075728a-3101-4a4c-9aad-46e05c502a94
     686281a3-ada2-4a10-af72-f0287cce5d73:
       size:
         width: 60
@@ -1487,6 +1479,11 @@ Metadata:
       parent: 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
       embeds: []
       iscontainedinside:
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
@@ -1591,17 +1588,6 @@ Metadata:
         - 10c646bf-a833-4785-a98c-d45c0db35077
         - 14b97c56-0c9c-45b5-851b-b52d968acb47
         - 4d7944ca-ecd8-4084-82cc-511abf763c82
-    223a4388-c54d-4ddf-b1a4-accc7b4dc0f2:
-      size:
-        width: 100
-        height: 90
-      position:
-        x: 1680
-        'y': 600
-      z: 3
-      parent: 59defcc5-0aa0-422b-92a9-6918a8a982fb
-      embeds:
-        - a6f252b9-bbb2-4107-b401-1f88d679f490
     d9499d33-286d-492c-9881-976932f380be:
       size:
         width: 100
@@ -1656,9 +1642,6 @@ Metadata:
       z: 2
       parent: 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
       embeds:
-        - c026f38e-9922-40bc-bc50-88f1c4fa9cb7
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - b60dbe78-df76-4220-bbb1-50d84b73fddc
         - 8115054e-8d32-459c-a1ca-bf6204ba9291
     c0c4b0fc-bbec-45a9-82e2-f6eb5957b022:
       size:
@@ -1714,67 +1697,11 @@ Metadata:
         - f8bc1ef4-8f64-4911-a06f-22ff761c0370
         - f8bc1ef4-8f64-4911-a06f-22ff761c0370
         - f8bc1ef4-8f64-4911-a06f-22ff761c0370
-    c026f38e-9922-40bc-bc50-88f1c4fa9cb7:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 1500
-        'y': 620
-      z: 3
-      parent: 59defcc5-0aa0-422b-92a9-6918a8a982fb
-      embeds: []
-    b60dbe78-df76-4220-bbb1-50d84b73fddc:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 1600
-        'y': 620
-      z: 3
-      parent: 59defcc5-0aa0-422b-92a9-6918a8a982fb
-      embeds: []
-    a6f252b9-bbb2-4107-b401-1f88d679f490:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 1700
-        'y': 620
-      z: 4
-      parent: 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-      embeds: []
-      isassociatedwith:
-        - b60dbe78-df76-4220-bbb1-50d84b73fddc
-      iscontainedinside:
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
-        - 223a4388-c54d-4ddf-b1a4-accc7b4dc0f2
+        - f8bc1ef4-8f64-4911-a06f-22ff761c0370
+        - f8bc1ef4-8f64-4911-a06f-22ff761c0370
+        - f8bc1ef4-8f64-4911-a06f-22ff761c0370
+        - f8bc1ef4-8f64-4911-a06f-22ff761c0370
+        - f8bc1ef4-8f64-4911-a06f-22ff761c0370
     3b10dc31-0923-4db1-96de-9e6db4c26eb0:
       size:
         width: 60
@@ -1836,6 +1763,11 @@ Metadata:
         - d9499d33-286d-492c-9881-976932f380be
         - d9499d33-286d-492c-9881-976932f380be
         - d9499d33-286d-492c-9881-976932f380be
+        - d9499d33-286d-492c-9881-976932f380be
+        - d9499d33-286d-492c-9881-976932f380be
+        - d9499d33-286d-492c-9881-976932f380be
+        - d9499d33-286d-492c-9881-976932f380be
+        - d9499d33-286d-492c-9881-976932f380be
     8115054e-8d32-459c-a1ca-bf6204ba9291:
       size:
         width: 60
@@ -1864,6 +1796,11 @@ Metadata:
       parent: 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
       embeds: []
       iscontainedinside:
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
+        - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
         - 3278cfa4-acbf-4d99-b8d8-982f9a8960ee
