@@ -712,8 +712,8 @@ Resources:
               - name: SoftlinkWordpressDir
                 action: CreateSymlink
                 inputs:
-                  - path: /mnt/efs/wp-content
-                    target: /var/www/html/wp-content
+                  - path: /var/www/html/wp-content
+                    target: /mnt/efs/wp-content
                     force: true
 
       Description: Image Component for Wordpress CF stack designed to install and configure EFS
