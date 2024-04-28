@@ -912,10 +912,28 @@ Resources:
           - !Ref InstanceType
           - Arch
       Version: 1.0.0
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "ec2.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InstanceRole
   WebServerImageInfraConfig:
     Type: AWS::ImageBuilder::InfrastructureConfiguration
     Properties:
       Description: Infrastructure Configuration for building the Wordpress web server instance image
+      InstanceProfileName: !Ref InstanceProfile
       InstanceTypes: 
         - !Ref InstanceType
       KeyPair: !Ref KeyPair
