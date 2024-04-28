@@ -689,7 +689,7 @@ Resources:
                 inputs:
                   commands:
                     - sudo yum update -y
-                    - sudo yum install -y nfs-utils
+                    - sudo yum install -y amazon-efs-utils
               - name: CreateEFSDir
                 action: CreateFolder
                 inputs:
