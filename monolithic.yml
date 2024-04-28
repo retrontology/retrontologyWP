@@ -936,8 +936,6 @@ Resources:
         - !Ref InstanceType
       KeyPair: !Ref KeyPair
       Name: WordpressInfraConfig
-      ResourceTags: 
-        Name: WordpressImageBuilder
       SecurityGroupIds: 
         - !Ref WebServerSecurityGroup
       SubnetId: !Ref PrivateSubnet2
