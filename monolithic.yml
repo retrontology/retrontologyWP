@@ -670,6 +670,71 @@ Resources:
     Metadata:
       'AWS::CloudFormation::Designer':
         id: 362849ae-7204-48e6-991d-cbaf04806159
+  WordpressComponentEFS:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+        name: WordpressComponentEFS - InlineData
+        description: Image Component for Wordpress CF stack designed to install and configure EFS
+        schemaVersion: 1.0
+
+        phases:
+          - name: build
+            steps:
+              - name: InstallDeps
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - sudo yum update -y
+                    - sudo yum install -y nfs-utils
+              - name: 
+
+      Description: Image Component for Wordpress CF stack designed to install and configure EFS
+      Name: WordpressComponentEFS
+      Platform: Linux
+      SupportedOsVersions: 
+        - 'Amazon Linux 2'
+      Version: 1.0.0
+  WebServerImageRecipe:
+    Type: AWS::ImageBuilder::ImageRecipe
+    Properties:
+      AdditionalInstanceConfiguration: 
+        AdditionalInstanceConfiguration
+      Components: 
+        - ComponentArn: String
+          Parameters: 
+            - ComponentParameter
+      Description: Image Recipe designed to cut down on instance spin up time in Wordpress web server autoscaling group
+      Name: wordpressImage
+      ParentImage: !FindInMap 
+        - AWSRegionArch2AMI
+        - !Ref 'AWS::Region'
+        - !FindInMap 
+          - AWSInstanceType2Arch
+          - !Ref InstanceType
+          - Arch
+      Version: 1.0.0
+  WebServerImageInfraConfig:
+    Type: AWS::ImageBuilder::InfrastructureConfiguration
+    Properties:
+      Description: Infrastructure Configuration for building the Wordpress web server instance image
+      InstanceTypes: 
+        - !Ref InstanceType
+      KeyPair: !Ref KeyPair
+      Name: WordpressInfraConfig
+      ResourceTags: 
+        Name: WordpressImageBuilder
+      SecurityGroupIds: 
+        - !Ref WebServerSecurityGroup
+      SubnetId: !Ref PrivateSubnet2
+      TerminateInstanceOnFailure: true
+  WebServerImage:
+    Type: AWS::ImageBuilder::Image
+    Properties:
+      ImageRecipeArn: !Ref WebServerImageRecipe
+      InfrastructureConfigurationArn: !Ref WebServerImageInfraConfig
+      Tags: 
+        Name: WordpressImage
   WebServerGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     Properties:
