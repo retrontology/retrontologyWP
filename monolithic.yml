@@ -839,9 +839,9 @@ Resources:
               - name: DownloadWordpress
                 action: WebDownload
                 inputs:
-                  source: http://wordpress.org/latest.tar.gz
-                  destination: /tmp/wordpress.tar.gz
-                  overwrite: true
+                  - source: https://wordpress.org/latest.tar.gz
+                    destination: /tmp/wordpress.tar.gz
+                    overwrite: true
               - name: ConfigureWordpress
                 action: ExecuteBash
                 inputs:
