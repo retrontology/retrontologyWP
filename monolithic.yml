@@ -921,6 +921,7 @@ Resources:
               Service: "ec2.amazonaws.com"
             Action: "sts:AssumeRole"
       ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
