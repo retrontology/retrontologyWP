@@ -876,8 +876,6 @@ Resources:
   WebServerImageRecipe:
     Type: AWS::ImageBuilder::ImageRecipe
     Properties:
-      AdditionalInstanceConfiguration: 
-        AdditionalInstanceConfiguration
       Components: 
         - ComponentArn: !Ref WebServerComponentEFS
           Parameters: 
