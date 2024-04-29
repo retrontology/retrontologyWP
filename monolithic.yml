@@ -923,13 +923,13 @@ Resources:
             Action:
               - sts:AssumeRole
       Policies:
-        - PolicyName: describe-instance-health-policy
+        - PolicyName: describe-target-health-policy
           PolicyDocument:
             Statement:
               - Effect: Allow
                 Action:
-                  - elasticloadbalancing:DescribeInstanceHealth
-                Resource: !Ref ApplicationLoadBalancer
+                  - elasticloadbalancing:DescribeTargetHealth
+                Resource: '*'
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -1033,7 +1033,7 @@ Resources:
         verify_instance_health:
           commands:
             ELBHealthCheck:
-              command: !Sub until [ "$state" == "\"InService\"" ]; do state=$(aws --region ${AWS::Region} elb describe-instance-health --load-balancer-name ${ApplicationLoadBalancer} --instances $(curl -s http://169.254.169.254/latest/meta-data/instance-id) --query InstanceStates[0].State); sleep 10; done
+              command: !Sub until [ "$state" == "\"healthy\"" ]; do state=$(aws --region ${AWS::Region} elbv2 describe-target-health --target-group-arn ${ALBTargetGroup} --targets "Id=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)" --query TargetHealthDescriptions[0].TargetHealth.State); sleep 10; done
       'AWS::CloudFormation::Designer':
         id: 2db1c3d7-c460-4fca-b705-2d9cc49e6544
     Properties:
