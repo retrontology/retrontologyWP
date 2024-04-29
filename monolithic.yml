@@ -978,7 +978,7 @@ Resources:
       'AWS::CloudFormation::Designer':
         id: 2db1c3d7-c460-4fca-b705-2d9cc49e6544
     Properties:
-      ImageId: !Ref WebServerImage
+      ImageId: !GetAtt WebServerImage.ImageId
       InstanceType: !Ref InstanceType
       SecurityGroups:
         - !Ref WebServerSecurityGroup
