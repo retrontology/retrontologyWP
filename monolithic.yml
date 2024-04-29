@@ -915,12 +915,21 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
         Statement:
-          - Effect: "Allow"
+          - Effect: Allow
             Principal:
-              Service: "ec2.amazonaws.com"
-            Action: "sts:AssumeRole"
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: describe-instance-health-policy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:DescribeInstanceHealth
+                Resource: !Ref ApplicationLoadBalancer
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -991,6 +1000,40 @@ Resources:
   LaunchConfig:
     Type: 'AWS::AutoScaling::LaunchConfiguration'
     Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          full_install:
+            - install_cfn
+            - verify_instance_health
+        install_cfn:
+          files:
+            /etc/cfn/cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+              mode: "000400"
+              owner: root
+              group: root
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfig --configsets full_install --region ${AWS::Region}
+                runas=root
+          services:
+            sysvinit:
+              cfn-hup:
+                enabled: "true"
+                ensureRunning: "true"
+                files:
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+        verify_instance_health:
+          commands:
+            ELBHealthCheck:
+              command: !Sub until [ "$state" == "\"InService\"" ]; do state=$(aws --region ${AWS::Region} elb describe-instance-health --load-balancer-name ${ApplicationLoadBalancer} --instances $(curl -s http://169.254.169.254/latest/meta-data/instance-id) --query InstanceStates[0].State); sleep 10; done
       'AWS::CloudFormation::Designer':
         id: 2db1c3d7-c460-4fca-b705-2d9cc49e6544
     Properties:
@@ -1000,6 +1043,12 @@ Resources:
       SecurityGroups:
         - !Ref WebServerSecurityGroup
       KeyName: !Ref KeyPair
+      UserData: !Base64
+        Fn::Sub: |
+          #!/bin/bash -xe
+          yum install -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource LaunchConfig --configsets full_install --region ${AWS::Region}
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource WebServerGroup --region ${AWS::Region}
   DBEC2SecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
