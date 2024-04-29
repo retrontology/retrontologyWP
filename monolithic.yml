@@ -557,7 +557,7 @@ Resources:
     Properties:
       KeyFormat: pem
       KeyName: wordpress-keypair
-      KeyType: ED25519
+      KeyType: ed25519
   BastionInstance:
     Type: 'AWS::EC2::Instance'
     Properties:
@@ -670,6 +670,309 @@ Resources:
     Metadata:
       'AWS::CloudFormation::Designer':
         id: 362849ae-7204-48e6-991d-cbaf04806159
+  WebServerComponentEFS:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+        name: WebServerComponentEFS - InlineData
+        description: Image Component for Wordpress CF stack designed to install and configure EFS
+        schemaVersion: 1.0
+        parameters:
+          - EFSID:
+              type: string
+              description: The ID of the EFS volume
+        phases:
+          - name: build
+            steps:
+              - name: InstallDeps
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - sudo yum update -y
+                    - sudo yum install -y amazon-efs-utils
+              - name: CreateEFSDir
+                action: CreateFolder
+                inputs:
+                  - path: /mnt/efs
+              - name: MountEFS
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - sudo su -c "echo '{{ EFSID }}:/ /mnt/efs efs _netdev,noresvport,tls,iam 0 0' >> /etc/fstab"
+                    - sudo mount -a
+              - name: CreateWordpressDir
+                action: CreateFolder
+                inputs:
+                  - path: /mnt/efs/wp-content
+                    overwrite: false
+              - name: CreateHTMLDir
+                action: CreateFolder
+                inputs:
+                  - path: /var/www/html
+              - name: SoftlinkWordpressDir
+                action: CreateSymlink
+                inputs:
+                  - path: /var/www/html/wp-content
+                    target: /mnt/efs/wp-content
+                    force: true
+
+      Description: Image Component for Wordpress CF stack designed to install and configure EFS
+      Name: WebServerComponentEFS
+      Platform: Linux
+      SupportedOsVersions: 
+        - 'Amazon Linux 2'
+      Version: 1.0.0
+  WebServerComponentPHP:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+        name: WebServerComponentPHP - InlineData
+        description: Image Component for Wordpress CF stack designed to install and configure PHP
+        schemaVersion: 1.0
+        phases:
+          - name: build
+            steps:
+              - name: InstallDeps
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - sudo yum update -y
+                    - sudo yum install -y amazon-linux-extras 
+                    - sudo amazon-linux-extras enable php8.1
+                    - sudo yum install -y gcc php php-devel php-mysqlnd php-pear php-gd php-mbstring php-intl ImageMagick ImageMagick-devel libmemcached-devel openssl11-devel
+                    - sudo pear channel-update pear.php.net
+                    - sudo pecl channel-update pecl.php.net
+                    - sudo pecl install imagick
+              - name: EnableImagick
+                action: CreateFile
+                inputs:
+                  - path: /etc/php.d/20-imagick.ini
+                    content: extension=imagick.so
+                    overwrite: false
+      Description: Image Component for Wordpress CF stack designed to install and configure PHP
+      Name: WebServerComponentPHP
+      Platform: Linux
+      SupportedOsVersions: 
+        - 'Amazon Linux 2'
+      Version: 1.0.0
+  WebServerComponentEC:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+        name: WebServerComponentEC - InlineData
+        description: Image Component for Wordpress CF stack designed to install and configure ElastiCache
+        schemaVersion: 1.0
+        phases:
+          - name: build
+            steps:
+              - name: InstallDeps
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - sudo yum update -y
+                    - sudo yum install -y git gcc gcc-c++ autoconf libevent-devel make perl-core pcre-devel wget zlib-devel 
+              - name: InstallLibmemcached
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - cd /tmp
+                    - git clone https://github.com/awslabs/aws-elasticache-cluster-client-libmemcached libmemcached
+                    - cd libmemcached
+                    - touch configure.ac aclocal.m4 configure Makefile.am Makefile.in
+                    - mkdir build && cd build
+                    - ../configure --with-pic --disable-sasl
+                    - make -j$(nproc)
+                    - sudo make install
+              - name: InstallMemcachedPHP
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - cd /tmp
+                    - git clone https://github.com/awslabs/aws-elasticache-cluster-client-memcached-for-php.git memcachedphp
+                    - cd memcachedphp
+                    - phpize
+                    - cd build
+                    - ../configure --disable-memcached-sasl
+                    - make -j$(nproc)
+                    - sudo make install
+              - name: EnableMemcachedPHP
+                action: CreateFile
+                inputs:
+                  - path: /etc/php.d/20-memcached.ini
+                    content: extension=memcached.so
+                    overwrite: false
+      Description: Image Component for Wordpress CF stack designed to install and configure ElastiCache
+      Name: WebServerComponentEC
+      Platform: Linux
+      SupportedOsVersions: 
+        - 'Amazon Linux 2'
+      Version: 1.0.0
+  WebServerComponentWordpress:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |
+        name: WebServerComponentWordpress - InlineData
+        description: Image Component for Wordpress CF stack designed to install and configure ElastiCache
+        schemaVersion: 1.0
+        parameters:
+          - DBName:
+              type: string
+              description: The name of the DB schema to use for Wordpress
+          - DBUser:
+              type: string
+              description: The Wordpress DB user name
+          - DBPassword:
+              type: string
+              description: The password for the Wordpress DB user
+          - DBEndpoint:
+              type: string
+              description: The endpoint of the RDS writer instance
+        phases:
+          - name: build
+            steps:
+              - name: InstallDeps
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - sudo yum update -y
+                    - sudo yum install -y mariadb httpd
+                    - sudo systemctl enable httpd
+              - name: DownloadWordpress
+                action: WebDownload
+                inputs:
+                  - source: https://wordpress.org/latest.tar.gz
+                    destination: /tmp/wordpress.tar.gz
+                    overwrite: true
+              - name: ConfigureWordpress
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - cd /tmp
+                    - tar -xzvf wordpress.tar.gz
+                    - cp /tmp/wordpress/wp-config-sample.php /tmp/wordpress/wp-config.php
+                    - sed -i "s/'database_name_here'/'{{ DBName }}'/g" /tmp/wordpress/wp-config.php
+                    - sed -i "s/'username_here'/'{{ DBUser }}'/g" /tmp/wordpress/wp-config.php
+                    - sed -i "s/'password_here'/'{{ DBPassword }}'/g" /tmp/wordpress/wp-config.php
+                    - sed -i "s/'localhost'/'{{ DBEndpoint }}'/g" /tmp/wordpress/wp-config.php
+                    - sed -i "/\/\* Add any custom values between this line and the \"stop editing\" line. \*\//a \ \ \ \ \$_SERVER['HTTPS']='on';" /tmp/wordpress/wp-config.php
+                    - sed -i "/\/\* Add any custom values between this line and the \"stop editing\" line. \*\//a if (strpos(\$_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !== false)" /tmp/wordpress/wp-config.php
+                    - sed -i "/\/\* Add any custom values between this line and the \"stop editing\" line. \*\//a  define('FORCE_SSL_ADMIN', true);" /tmp/wordpress/wp-config.php
+                    - sed -i "/\/\* Add any custom values between this line and the \"stop editing\" line. \*\//a define('FS_METHOD', 'direct');" /tmp/wordpress/wp-config.php
+              - name: InstallWordpress
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - mv /tmp/wordpress/wp-content/* /mnt/efs/wp-content/
+                    - rm -r /tmp/wordpress/wp-content
+                    - mv /tmp/wordpress/* /var/www/html/
+                    - touch /var/www/html/.htaccess
+                    - rm -r /tmp/wordpress
+                    - chown -R apache:apache /mnt/efs/wp-content /var/www/html/
+      Description: Image Component for Wordpress CF stack designed to install and configure Wordpress
+      Name: WebServerComponentWordpress
+      Platform: Linux
+      SupportedOsVersions: 
+        - 'Amazon Linux 2'
+      Version: 1.0.0
+  WebServerImageRecipe:
+    Type: AWS::ImageBuilder::ImageRecipe
+    Properties:
+      Components: 
+        - ComponentArn: !Ref WebServerComponentEFS
+          Parameters: 
+            - Name: EFSID
+              Value: 
+                - !Ref ElasticFileSystem
+        - ComponentArn: !Ref WebServerComponentPHP
+        - ComponentArn: !Ref WebServerComponentEC
+        - ComponentArn: !Ref WebServerComponentWordpress
+          Parameters:
+            - Name: DBName
+              Value: 
+                - !Ref DBName
+            - Name: DBUser
+              Value: 
+                - !Ref DBUser
+            - Name: DBPassword
+              Value: 
+                - !Ref DBPassword
+            - Name: DBEndpoint
+              Value: 
+                - !GetAtt 
+                    - DBInstance
+                    - Endpoint.Address
+      Description: Image Recipe designed to cut down on instance spin up time in Wordpress web server autoscaling group
+      Name: wordpressImage
+      ParentImage: !FindInMap 
+        - AWSRegionArch2AMI
+        - !Ref 'AWS::Region'
+        - !FindInMap 
+          - AWSInstanceType2Arch
+          - !Ref InstanceType
+          - Arch
+      Version: 1.0.0
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: describe-target-health-policy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:DescribeTargetHealth
+                Resource: '*'
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InstanceRole
+  InfraInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "ec2.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder
+  InfraInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InfraInstanceRole
+  WebServerImageInfraConfig:
+    Type: AWS::ImageBuilder::InfrastructureConfiguration
+    Properties:
+      Description: Infrastructure Configuration for building the Wordpress web server instance image
+      InstanceProfileName: !Ref InfraInstanceProfile
+      InstanceTypes: 
+        - !Ref InstanceType
+      KeyPair: !Ref KeyPair
+      Name: WordpressInfraConfig
+      SecurityGroupIds: 
+        - !Ref WebServerSecurityGroup
+      SubnetId: !Ref PrivateSubnet2
+      TerminateInstanceOnFailure: true
+  WebServerImage:
+    Type: AWS::ImageBuilder::Image
+    Properties:
+      ImageRecipeArn: !Ref WebServerImageRecipe
+      InfrastructureConfigurationArn: !Ref WebServerImageInfraConfig
+      Tags: 
+        Name: WordpressImage
   WebServerGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     Properties:
@@ -697,312 +1000,55 @@ Resources:
   LaunchConfig:
     Type: 'AWS::AutoScaling::LaunchConfiguration'
     Metadata:
-      'AWS::CloudFormation::Init':
+      AWS::CloudFormation::Init:
         configSets:
-          wordpress_install:
+          full_install:
             - install_cfn
-            - mount_efs
-            - php_update
-            - php_deps
-            - install_memcached
-            - install_wordpress
+            - verify_instance_health
         install_cfn:
           files:
             /etc/cfn/cfn-hup.conf:
-              content: !Join 
-                - ''
-                - - |
-                    [main]
-                  - stack=
-                  - !Ref 'AWS::StackId'
-                  - |+
-
-                  - region=
-                  - !Ref 'AWS::Region'
-                  - |+
-
-              mode: '000400'
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+              mode: "000400"
               owner: root
               group: root
             /etc/cfn/hooks.d/cfn-auto-reloader.conf:
-              content: !Join 
-                - ''
-                - - |
-                    [cfn-auto-reloader-hook]
-                  - |
-                    triggers=post.update
-                  - >
-                    path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init
-                  - 'action=/opt/aws/bin/cfn-init -v '
-                  - '         --stack '
-                  - !Ref 'AWS::StackName'
-                  - '         --resource LaunchConfig '
-                  - '         --configsets wordpress_install '
-                  - '         --region '
-                  - !Ref 'AWS::Region'
-                  - |+
-
-              mode: '000400'
-              owner: root
-              group: root
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfig --configsets full_install --region ${AWS::Region}
+                runas=root
           services:
             sysvinit:
               cfn-hup:
-                enabled: 'true'
-                ensureRunning: 'true'
+                enabled: "true"
+                ensureRunning: "true"
                 files:
                   - /etc/cfn/cfn-hup.conf
                   - /etc/cfn/hooks.d/cfn-auto-reloader.conf
-        mount_efs:
-          packages:
-            yum:
-              nfs-utils: []
+        verify_instance_health:
           commands:
-            01_create_efs_dir:
-              command: mkdir -p /mnt/efs
-              test: '! test -d /mnt/efs'
-            02_mount:
-              command: !Sub >
-                mount -t nfs4 -o nfsvers=4.1
-                ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs
-              test: 'mount | awk ''{if ($3 == "/mnt/efs") { exit 1}} ENDFILE{exit 0}'''
-            03_create_html:
-              command: mkdir -p /var/www/html
-              test: '! test -d /var/www/html'
-            04_create_wpcontent_dir:
-              command: mkdir -p /mnt/efs/wp-content
-              test: '! test -d /mnt/efs/wp-content'
-            05_softlink:
-              command: ln -s /mnt/efs/wp-content /var/www/html/wp-content
-              test: '! test -L /var/www/html/wp-content'
-        php_update:
-          packages:
-            yum:
-              amazon-linux-extras: []
-          commands:
-            01_enable_php81:
-              command: amazon-linux-extras enable php8.1
-              test: >-
-                amazon-linux-extras | grep php8.1 | awk '{if ($3 == "enabled")
-                {exit 1}} ENDFILE{exit 0}'
-        php_deps:
-          packages:
-            yum:
-              gcc: []
-              php: []
-              php-devel: []
-              php-mysqlnd: []
-              php-pear: []
-              php-gd: []
-              php-mbstring: []
-              php-intl: []
-              ImageMagick: []
-              ImageMagick-devel: []
-              libmemcached-devel: []
-              openssl11-devel: []
-          commands:
-            01_update_pear:
-              command: pear channel-update pear.php.net
-            02_update_pecl:
-              command: pecl channel-update pecl.php.net
-            03_install_imagick:
-              command: pecl install imagick
-              test: '! pecl info imagick'
-            04_imagick_ini:
-              command: echo extension=imagick.so > /etc/php.d/20-imagick.ini
-              test: '! test -f /etc/php.d/20-imagick.ini'
-        install_memcached:
-          packages:
-            yum:
-              git: []
-              gcc: []
-              gcc-c++: []
-              autoconf: []
-              libevent-devel: []
-              make: []
-              perl-core: []
-              pcre-devel: []
-              wget: []
-              zlib-devel: []
-          commands:
-            01_create_elasticache_dir:
-              command: mkdir -p /mnt/efs/elasticache
-              test: '! test -d /mnt/efs/elasticache'
-            02_clone_libmemcached:
-              command: >-
-                git clone
-                https://github.com/awslabs/aws-elasticache-cluster-client-libmemcached
-                libmemcached
-              cwd: /mnt/efs/elasticache
-              test: '! test -d /mnt/efs/elasticache/libmemcached'
-            03_prepare_libmemcached:
-              command: >-
-                touch configure.ac aclocal.m4 configure Makefile.am Makefile.in
-                && mkdir build
-              cwd: /mnt/efs/elasticache/libmemcached
-              test: '! test -d /mnt/efs/elasticache/libmemcached/build'
-            04_configure_libmemcached:
-              command: ../configure --with-pic --disable-sasl
-              cwd: /mnt/efs/elasticache/libmemcached/build
-              test: '! test -f /mnt/efs/elasticache/libmemcached/build/Makefile'
-            05_build_libmemcached:
-              command: make -j$(nproc)
-              cwd: /mnt/efs/elasticache/libmemcached/build
-              test: '! test -f /mnt/efs/elasticache/libmemcached/build/tests/memdump'
-            06_install_libmemcached:
-              command: make install
-              cwd: /mnt/efs/elasticache/libmemcached/build
-              test: '! test -d /usr/local/include/libmemcached'
-            07_clone_memcachedphp:
-              command: >-
-                git clone
-                https://github.com/awslabs/aws-elasticache-cluster-client-memcached-for-php.git
-                memcachedphp
-              cwd: /mnt/efs/elasticache
-              test: '! test -d /mnt/efs/elasticache/memcachedphp'
-            08_prepare_memcachedphp:
-              command: phpize
-              cwd: /mnt/efs/elasticache/memcachedphp
-              test: '! test -d /mnt/efs/elasticache/memcachedphp/build'
-            09_configure_memcachedphp:
-              command: ../configure --disable-memcached-sasl
-              cwd: /mnt/efs/elasticache/memcachedphp/build
-              test: '! test -f /mnt/efs/elasticache/memcachedphp/build/Makefile'
-            10_build_memcachedphp:
-              command: make -j$(nproc)
-              cwd: /mnt/efs/elasticache/memcachedphp/build
-              test: >-
-                ! test -f
-                /mnt/efs/elasticache/memcachedphp/build/modules/memcached.so
-            11_install_memcachedphp:
-              command: make install
-              cwd: /mnt/efs/elasticache/memcachedphp/build
-              test: '! test -f /usr/lib64/php/modules/memcached.so'
-            12_memcached_ini:
-              command: echo extension=memcached.so > /etc/php.d/20-memcached.ini
-              test: '! test -f /etc/php.d/20-memcached.ini'
-        install_wordpress:
-          packages:
-            yum:
-              mariadb: []
-              httpd: []
-          sources:
-            /tmp/wp: 'http://wordpress.org/latest.tar.gz'
-          files:
-            /tmp/create-wp-config:
-              content: !Join 
-                - ''
-                - - |
-                    #!/bin/bash
-                  - >
-                    cp /tmp/wp/wordpress/wp-config-sample.php
-                    /tmp/wp/wordpress/wp-config.php
-                  - sed -i "s/'database_name_here'/'
-                  - !Ref DBName
-                  - |
-                    '/g" wp-config.php
-                  - sed -i "s/'username_here'/'
-                  - !Ref DBUser
-                  - |
-                    '/g" wp-config.php
-                  - sed -i "s/'password_here'/'
-                  - !Ref DBPassword
-                  - |
-                    '/g" wp-config.php
-                  - sed -i "s/'localhost'/'
-                  - !GetAtt 
-                    - DBInstance
-                    - Endpoint.Address
-                  - |
-                    '/g" wp-config.php
-                  - >
-                    sed -i "/\/\* Add any custom values between this line and
-                    the \"stop editing\" line. \*\//a \ \ \ \ 
-                    \$_SERVER['HTTPS']='on';" wp-config.php
-                  - >
-                    sed -i "/\/\* Add any custom values between this line and
-                    the \"stop editing\" line. \*\//a if
-                    (strpos(\$_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !==
-                    false)" wp-config.php
-                  - >
-                    sed -i "/\/\* Add any custom values between this line and
-                    the \"stop editing\" line. \*\//a  define('FORCE_SSL_ADMIN',
-                    true);" wp-config.php
-                  - >
-                    sed -i "/\/\* Add any custom values between this line and
-                    the \"stop editing\" line. \*\//a define('FS_METHOD',
-                    'direct');" wp-config.php
-              mode: '000500'
-              owner: root
-              group: root
-          commands:
-            01_configure_wordpress:
-              command: /tmp/create-wp-config
-              cwd: /tmp/wp/wordpress
-              test: '! test -f /var/www/html/wp-config.php'
-            02_remove_script:
-              command: rm /tmp/create-wp-config
-              test: test -f /tmp/create-wp-config
-            03_copy_content:
-              command: mv /tmp/wp/wordpress/wp-content/* /mnt/efs/wp-content/
-              test: '! test -f /var/www/html/wp-content/index.php'
-            04_remove_content:
-              command: rm -r /tmp/wp/wordpress/wp-content
-              test: test -d /tmp/wp/wordpress/wp-content
-            05_move_up:
-              command: mv /tmp/wp/wordpress/* /var/www/html/
-              test: '! test -f /var/www/html/index.php'
-            06_touch_htaccess:
-              command: touch /var/www/html/.htaccess
-              test: '! test -f /var/www/html/.htaccess'
-            07_remove_old:
-              command: rm -r /tmp/wp
-              test: test -d /tmp/wp
-            08_perms:
-              command: 'chown -R apache:apache /mnt/efs/wp-content /var/www/html/'
-          services:
-            sysvinit:
-              httpd:
-                enabled: 'true'
-                ensureRunning: 'true'
+            ELBHealthCheck:
+              command: !Sub until [ "$state" == "\"healthy\"" ]; do state=$(aws --region ${AWS::Region} elbv2 describe-target-health --target-group-arn ${ALBTargetGroup} --targets "Id=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)" --query TargetHealthDescriptions[0].TargetHealth.State); sleep 10; done
       'AWS::CloudFormation::Designer':
         id: 2db1c3d7-c460-4fca-b705-2d9cc49e6544
     Properties:
-      ImageId: !FindInMap 
-        - AWSRegionArch2AMI
-        - !Ref 'AWS::Region'
-        - !FindInMap 
-          - AWSInstanceType2Arch
-          - !Ref InstanceType
-          - Arch
+      IamInstanceProfile: !Ref InstanceProfile
+      ImageId: !GetAtt WebServerImage.ImageId
       InstanceType: !Ref InstanceType
       SecurityGroups:
         - !Ref WebServerSecurityGroup
       KeyName: !Ref KeyPair
-      UserData: !Base64 
-        'Fn::Join':
-          - ''
-          - - |
-              #!/bin/bash -xe
-            - |
-              yum update -y aws-cfn-bootstrap
-            - '/opt/aws/bin/cfn-init -v '
-            - '         --stack '
-            - !Ref 'AWS::StackName'
-            - '         --resource LaunchConfig '
-            - '         --configsets wordpress_install '
-            - '         --region '
-            - !Ref 'AWS::Region'
-            - |+
-
-            - '/opt/aws/bin/cfn-signal -e $? '
-            - '         --stack '
-            - !Ref 'AWS::StackName'
-            - '         --resource WebServerGroup '
-            - '         --region '
-            - !Ref 'AWS::Region'
-            - |+
-
+      UserData: !Base64
+        Fn::Sub: |
+          #!/bin/bash -xe
+          yum install -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource LaunchConfig --configsets full_install --region ${AWS::Region}
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource WebServerGroup --region ${AWS::Region}
   DBEC2SecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
