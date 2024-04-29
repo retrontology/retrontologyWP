@@ -921,19 +921,34 @@ Resources:
             Principal:
               Service: "ec2.amazonaws.com"
             Action: "sts:AssumeRole"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-        - arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles:
         - !Ref InstanceRole
+  InfraInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "ec2.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder
+  InfraInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InfraInstanceRole
   WebServerImageInfraConfig:
     Type: AWS::ImageBuilder::InfrastructureConfiguration
     Properties:
       Description: Infrastructure Configuration for building the Wordpress web server instance image
-      InstanceProfileName: !Ref InstanceProfile
+      InstanceProfileName: !Ref InfraInstanceProfile
       InstanceTypes: 
         - !Ref InstanceType
       KeyPair: !Ref KeyPair
@@ -979,6 +994,7 @@ Resources:
       'AWS::CloudFormation::Designer':
         id: 2db1c3d7-c460-4fca-b705-2d9cc49e6544
     Properties:
+      IamInstanceProfile: !Ref InstanceProfile
       ImageId: !GetAtt WebServerImage.ImageId
       InstanceType: !Ref InstanceType
       SecurityGroups:
