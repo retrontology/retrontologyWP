@@ -777,7 +777,7 @@ Resources:
                   commands:
                     - cd /tmp
                     - git clone https://github.com/awslabs/aws-elasticache-cluster-client-libmemcached libmemcached
-                    - cd elasticache/libmemcached
+                    - cd libmemcached
                     - touch configure.ac aclocal.m4 configure Makefile.am Makefile.in
                     - mkdir build && cd build
                     - ../configure --with-pic --disable-sasl
